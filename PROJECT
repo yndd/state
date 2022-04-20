@@ -1,0 +1,5 @@
+version: "1"
+domain: nddp.yndd.io
+repository: github.com/yndd/nddp-state
+name: nddp-state
+resources: []
