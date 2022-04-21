@@ -42,6 +42,7 @@ func New(cache *cache.Cache, opts ...Option) Collector {
 	for _, opt := range opts {
 		opt(c)
 	}
+
 	return c
 }
 

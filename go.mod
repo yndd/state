@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/karimra/gnmic v0.24.4
+	github.com/nats-io/nats.go v1.14.0
 	github.com/openconfig/gnmi v0.0.0-20220131173555-39aa74195f0d
 	github.com/openconfig/goyang v1.0.0
 	github.com/openconfig/ygot v0.17.0
@@ -14,7 +15,6 @@ require (
 	github.com/yndd/ndd-runtime v0.4.8
 	github.com/yndd/ndd-yang v0.2.8
 	github.com/yndd/nddo-runtime v0.0.85
-	github.com/yndd/nddp-system v0.2.3
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.45.0
 	k8s.io/api v0.23.5
@@ -103,10 +103,14 @@ require (
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/nats-io/jwt/v2 v2.2.1-0.20220113022732-58e87895b296 // indirect
+	github.com/nats-io/nkeys v0.3.0 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/sftp v1.13.4 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect

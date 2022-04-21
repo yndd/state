@@ -1019,6 +1019,7 @@ github.com/klauspost/compress v1.11.12/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdY
 github.com/klauspost/compress v1.11.13/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/klauspost/compress v1.13.5/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
+github.com/klauspost/compress v1.14.4 h1:eijASRJcobkVtSt81Olfh7JX43osYLwy5krOJo6YEu4=
 github.com/klauspost/compress v1.14.4/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.2/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
@@ -1104,6 +1105,7 @@ github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJys
 github.com/miekg/pkcs11 v1.0.3/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
 github.com/minio/highwayhash v1.0.0/go.mod h1:xQboMTeM9nY9v/LlAOxFctujiv5+Aq2hR5dxBpaMbdc=
 github.com/minio/highwayhash v1.0.1/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
+github.com/minio/highwayhash v1.0.2 h1:Aak5U0nElisjDCfPSG79Tgzkn2gl66NxOMspRrKnA/g=
 github.com/minio/highwayhash v1.0.2/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
 github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible/go.mod h1:8AuVvqP/mXw1px98n46wfvcGfQ4ci2FwoAjKYxuo3Z4=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
@@ -1157,12 +1159,14 @@ github.com/nats-io/jwt v0.3.0/go.mod h1:fRYCDE99xlTsqUzISS1Bi75UBJ6ljOJQOAAu5Vgl
 github.com/nats-io/jwt v0.3.2/go.mod h1:/euKqTS1ZD+zzjYrY7pseZrTtWQSjujC7xjPc8wL6eU=
 github.com/nats-io/jwt v0.3.3-0.20200519195258-f2bf5ce574c7/go.mod h1:n3cvmLfBfnpV4JJRN7lRYCyZnw48ksGsbThGXEk4w9M=
 github.com/nats-io/jwt v1.1.0/go.mod h1:n3cvmLfBfnpV4JJRN7lRYCyZnw48ksGsbThGXEk4w9M=
+github.com/nats-io/jwt v1.2.2 h1:w3GMTO969dFg+UOKTmmyuu7IGdusK+7Ytlt//OYH/uU=
 github.com/nats-io/jwt v1.2.2/go.mod h1:/xX356yQA6LuXI9xWW7mZNpxgF2mBmGecH+Fj34sP5Q=
 github.com/nats-io/jwt/v2 v2.0.0-20200916203241-1f8ce17dff02/go.mod h1:vs+ZEjP+XKy8szkBmQwCB7RjYdIlMaPsFPs4VdS4bTQ=
 github.com/nats-io/jwt/v2 v2.0.0-20201015190852-e11ce317263c/go.mod h1:vs+ZEjP+XKy8szkBmQwCB7RjYdIlMaPsFPs4VdS4bTQ=
 github.com/nats-io/jwt/v2 v2.0.0-20210125223648-1c24d462becc/go.mod h1:PuO5FToRL31ecdFqVjc794vK0Bj0CwzveQEDvkb7MoQ=
 github.com/nats-io/jwt/v2 v2.0.0-20210208203759-ff814ca5f813/go.mod h1:PuO5FToRL31ecdFqVjc794vK0Bj0CwzveQEDvkb7MoQ=
 github.com/nats-io/jwt/v2 v2.0.1/go.mod h1:VRP+deawSXyhNjXmxPCHskrR6Mq50BqpEI5SEcNiGlY=
+github.com/nats-io/jwt/v2 v2.2.1-0.20220113022732-58e87895b296 h1:vU9tpM3apjYlLLeY23zRWJ9Zktr5jp+mloR942LEOpY=
 github.com/nats-io/jwt/v2 v2.2.1-0.20220113022732-58e87895b296/go.mod h1:0tqz9Hlu6bCBFLWAASKhE5vUA4c24L9KPUUgvwumE/k=
 github.com/nats-io/nats-server/v2 v2.1.2/go.mod h1:Afk+wRZqkMQs/p45uXdrVLuab3gwv3Z8C4HTBu8GD/k=
 github.com/nats-io/nats-server/v2 v2.1.7/go.mod h1:rbRrRE/Iv93O/rUvZ9dh4NfT0Cm9HWjW/BqOWLGgYiE=
@@ -1173,6 +1177,7 @@ github.com/nats-io/nats-server/v2 v2.1.8-0.20201129161730-ebe63db3e3ed/go.mod h1
 github.com/nats-io/nats-server/v2 v2.1.8-0.20210205154825-f7ab27f7dad4/go.mod h1:kauGd7hB5517KeSqspW2U1Mz/jhPbTrE8eOXzUPk1m0=
 github.com/nats-io/nats-server/v2 v2.1.8-0.20210227190344-51550e242af8/go.mod h1:/QQ/dpqFavkNhVnjvMILSQ3cj5hlmhB66adlgNbjuoA=
 github.com/nats-io/nats-server/v2 v2.2.0/go.mod h1:eKlAaGmSQHZMFQA6x56AaP5/Bl9N3mWF4awyT2TTpzc=
+github.com/nats-io/nats-server/v2 v2.7.4 h1:c+BZJ3rGzUKCBIM4IXO8uNT2u1vajGbD1kPA6wqCEaM=
 github.com/nats-io/nats-server/v2 v2.7.4/go.mod h1:1vZ2Nijh8tcyNe8BDVyTviCd9NYzRbubQYiEHsvOQWc=
 github.com/nats-io/nats-streaming-server v0.18.0/go.mod h1:Y9Aiif2oANuoKazQrs4wXtF3jqt6p97ODQg68lR5TnY=
 github.com/nats-io/nats-streaming-server v0.24.3/go.mod h1:rqWfyCbxlhKj//fAp8POdQzeADwqkVhZcoWlbhkuU5w=
@@ -1186,11 +1191,15 @@ github.com/nats-io/nats.go v1.10.1-0.20210211000709-75ded9c77585/go.mod h1:uBWnC
 github.com/nats-io/nats.go v1.10.1-0.20210228004050-ed743748acac/go.mod h1:hxFvLNbNmT6UppX5B5Tr/r3g+XSwGjJzFn6mxPNJEHc=
 github.com/nats-io/nats.go v1.13.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
+github.com/nats-io/nats.go v1.14.0 h1:/QLCss4vQ6wvDpbqXucsVRDi13tFIR6kTdau+nXzKJw=
+github.com/nats-io/nats.go v1.14.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nkeys v0.1.0/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
 github.com/nats-io/nkeys v0.1.3/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
 github.com/nats-io/nkeys v0.1.4/go.mod h1:XdZpAbhgyyODYqjTawOnIOI7VlbKSarI9Gfy1tqEu/s=
 github.com/nats-io/nkeys v0.2.0/go.mod h1:XdZpAbhgyyODYqjTawOnIOI7VlbKSarI9Gfy1tqEu/s=
+github.com/nats-io/nkeys v0.3.0 h1:cgM5tL53EvYRU+2YLXIK0G2mJtK12Ft9oeooSZMA2G8=
 github.com/nats-io/nkeys v0.3.0/go.mod h1:gvUNGjVcM2IPr5rCsRsC6Wb3Hr2CQAm08dsxtV6A5y4=
+github.com/nats-io/nuid v1.0.1 h1:5iA8DT8V7q8WK2EScv2padNa/rTESc1KdnPw4TC2paw=
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/nats-io/stan.go v0.7.0/go.mod h1:Ci6mUIpGQTjl++MqK2XzkWI/0vF+Bl72uScx7ejSYmU=
 github.com/nats-io/stan.go v0.10.2/go.mod h1:vo2ax8K2IxaR3JtEMLZRFKIdoK/3o1/PKueapB7ezX0=
@@ -1554,7 +1563,6 @@ github.com/yndd/ndd-runtime v0.1.6/go.mod h1:Y07uIZQgSqz5h3UeAYp24JyDjugH0T/zeAC
 github.com/yndd/ndd-runtime v0.1.10/go.mod h1:Y07uIZQgSqz5h3UeAYp24JyDjugH0T/zeACjNFVnBes=
 github.com/yndd/ndd-runtime v0.2.24/go.mod h1:1mXKpIPdY80e0LxpGiVMtTWcHuuXIBZEHlpvLRj+6Fs=
 github.com/yndd/ndd-runtime v0.2.51/go.mod h1:1mXKpIPdY80e0LxpGiVMtTWcHuuXIBZEHlpvLRj+6Fs=
-github.com/yndd/ndd-runtime v0.3.0/go.mod h1:vBCpUsDUymCEaYOKOmI0tbpggC9eiU8xlirnT1ZN1Sc=
 github.com/yndd/ndd-runtime v0.4.8 h1:j5+l/yjw5qsUGZ65++mmSHXgeKqs94bPi5cCBGfAfMQ=
 github.com/yndd/ndd-runtime v0.4.8/go.mod h1:vBCpUsDUymCEaYOKOmI0tbpggC9eiU8xlirnT1ZN1Sc=
 github.com/yndd/ndd-yang v0.1.62/go.mod h1:GT/8efIchBH1sQ6J64AM1FZDXXIaWeirkYUpbmDPlHI=
@@ -1585,8 +1593,6 @@ github.com/yndd/nddp-srl3 v0.0.1/go.mod h1:lPjUIiSfdBiOjyWsdHbPu9gaLO7D2Q5ROjmw1
 github.com/yndd/nddp-system v0.0.25/go.mod h1:430zJYP2NTxa+wOOC1ANuTMdW6WqRwsgz6n4wqGz5JA=
 github.com/yndd/nddp-system v0.0.30/go.mod h1:5yZZvSmaCcSxag0kK9r1j1Sf7Kh/JS5bq3oeGYaGdbQ=
 github.com/yndd/nddp-system v0.1.6/go.mod h1:de07SAGt/KWH6n3pSRCNt9Ylty1jhSqCmbFtglvvXaI=
-github.com/yndd/nddp-system v0.2.3 h1:yAqf2Hzrhga9/8FZIGCz5+T7aPtWHt1q50lktm39oVs=
-github.com/yndd/nddp-system v0.2.3/go.mod h1:e3bj1vahrvezvst1YbCNFutvk+V24CHdsAye1JNZ83c=
 github.com/yndd/nddr-as-registry v0.0.7/go.mod h1:0vg7+8qzSOpgDceLygIYvQ6s3uXh2iV8QEVjs9yn880=
 github.com/yndd/nddr-ipam-registry v0.0.3/go.mod h1:yFXaQkcSNQz0PmLuAVDThROE4x794A66ydXRISRD+dw=
 github.com/yndd/nddr-ni-registry v0.0.6/go.mod h1:ifDc1cw6eOs7RxhERplphnBsaL+Tp2GhbAugNHXNVYY=
