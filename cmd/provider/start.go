@@ -25,7 +25,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/openconfig/gnmi/cache"
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
@@ -124,16 +123,17 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "unable to create webhook for state")
 		}
 
-		cache := cache.New(nil)
 		config := config.New()
 
 		// intialize the gnmiserver
-		s := gnmiserver.New(
+		s, err := gnmiserver.New(
 			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			gnmiserver.WithCache(cache),
 			gnmiserver.WithConfig(config),
 			gnmiserver.WithK8sClient(mgr.GetClient()),
 		)
+		if err != nil {
+			return errors.Wrap(err, "Cannot create gnmi server")
+		}
 		if err := s.Start(); err != nil {
 			return errors.Wrap(err, "Cannot start gnmi server")
 		}

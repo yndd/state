@@ -17,9 +17,18 @@ limitations under the License.
 package collector
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/nats-io/nats.go"
+	"github.com/openconfig/gnmi/path"
+	"github.com/openconfig/gnmi/proto/gnmi"
+)
+
+const (
+	natsServer = "nats.ndd-system.svc.cluster.local"
+	natsStream = "nddpstate"
 )
 
 type stream struct {
@@ -33,7 +42,7 @@ func createStream(js nats.JetStreamContext, str *stream) error {
 	stream, err := js.StreamInfo(str.Name)
 	if err != nil {
 		// ignore not found
-		if !strings.Contains(err.Error(), "not found") {
+		if !errors.Is(err, nats.ErrStreamNotFound) {
 			return err
 		}
 	}
@@ -47,4 +56,57 @@ func createStream(js nats.JetStreamContext, str *stream) error {
 		}
 	}
 	return nil
+}
+
+func publishGnmiUpdate(js nats.JetStreamContext, target string, u *gnmi.Update) error {
+	b, err := getByteSlice(u.GetVal())
+	if err != nil {
+		return err
+	}
+	if _, err := js.Publish(getSubjectFromPath(target, u.GetPath()), b); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getSubjectFromPath(target string, p *gnmi.Path) string {
+	pathStr := strings.Join(path.ToStrings(p, false), ".")
+	return strings.Join([]string{natsStream, target, pathStr}, ".")
+}
+
+// GetByteSlice return a []byte of the gnmi typed value
+func getByteSlice(updValue *gnmi.TypedValue) ([]byte, error) {
+	if updValue == nil {
+		return nil, nil
+	}
+	switch updValue.Value.(type) {
+	case *gnmi.TypedValue_AsciiVal:
+		return []byte(updValue.GetAsciiVal()), nil
+	case *gnmi.TypedValue_BoolVal:
+		return []byte(fmt.Sprintf("%v", updValue.GetBoolVal())), nil
+	case *gnmi.TypedValue_BytesVal:
+		return updValue.GetBytesVal(), nil
+	case *gnmi.TypedValue_DecimalVal:
+		return []byte(fmt.Sprintf("%v", updValue.GetDecimalVal())), nil
+	case *gnmi.TypedValue_FloatVal:
+		return []byte(fmt.Sprintf("%v", updValue.GetFloatVal())), nil
+	case *gnmi.TypedValue_IntVal:
+		return []byte(fmt.Sprintf("%v", updValue.GetIntVal())), nil
+	case *gnmi.TypedValue_StringVal:
+		return []byte(updValue.GetStringVal()), nil
+	case *gnmi.TypedValue_UintVal:
+		return []byte(fmt.Sprintf("%v", updValue.GetUintVal())), nil
+	case *gnmi.TypedValue_JsonIetfVal:
+		return updValue.GetJsonIetfVal(), nil
+	case *gnmi.TypedValue_JsonVal:
+		return updValue.GetJsonVal(), nil
+	case *gnmi.TypedValue_LeaflistVal:
+		//value = updValue.GetLeaflistVal()
+	case *gnmi.TypedValue_ProtoBytes:
+		//value = updValue.GetProtoBytes()
+	case *gnmi.TypedValue_AnyVal:
+		//value = updValue.GetAnyVal()
+	}
+
+	return nil, nil
 }

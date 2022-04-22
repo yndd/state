@@ -21,7 +21,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/openconfig/gnmi/cache"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/pkg/errors"
 	ndrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
@@ -50,12 +49,6 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
-func WithCache(c *cache.Cache) Option {
-	return func(s GnmiServer) {
-		s.WithCache(c)
-	}
-}
-
 func WithConfig(c config.Config) Option {
 	return func(s GnmiServer) {
 		s.WithConfig(c)
@@ -71,7 +64,6 @@ func WithK8sClient(client client.Client) Option {
 type GnmiServer interface {
 	WithLogger(log logging.Logger)
 	WithK8sClient(client client.Client)
-	WithCache(c *cache.Cache)
 	WithConfig(c config.Config)
 	Start() error
 }
@@ -102,8 +94,6 @@ type gnmiServerImpl struct {
 	newNetworkNode func() ndrv1.Nn
 	// config per target
 	config config.Config
-	// cache per target
-	cache *cache.Cache
 	// state collectors
 	collector collector.Collector
 	// gnmi calls
@@ -116,7 +106,7 @@ type gnmiServerImpl struct {
 	ctx context.Context
 }
 
-func New(opts ...Option) GnmiServer {
+func New(opts ...Option) (GnmiServer, error) {
 	nn := func() ndrv1.Nn { return &ndrv1.NetworkNode{} }
 	s := &gnmiServerImpl{
 		cfg: &serverConfig{
@@ -131,20 +121,20 @@ func New(opts ...Option) GnmiServer {
 	for _, opt := range opts {
 		opt(s)
 	}
-	s.collector = collector.New(s.cache,
+	var err error
+	s.collector, err = collector.New(
 		collector.WithLogger(s.log),
 	)
 	s.ctx = context.Background()
+	if err != nil {
+		return nil, err
+	}
 
-	return s
+	return s, nil
 }
 
 func (s *gnmiServerImpl) WithLogger(log logging.Logger) {
 	s.log = log
-}
-
-func (s *gnmiServerImpl) WithCache(c *cache.Cache) {
-	s.cache = c
 }
 
 func (s *gnmiServerImpl) WithConfig(c config.Config) {

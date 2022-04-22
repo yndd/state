@@ -1,9 +1,11 @@
 package collector
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/karimra/gnmic/types"
+	"github.com/nats-io/nats.go"
 	"github.com/openconfig/gnmi/cache"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
@@ -34,16 +36,34 @@ type collector struct {
 	log logging.Logger
 }
 
-func New(cache *cache.Cache, opts ...Option) Collector {
+func New(opts ...Option) (Collector, error) {
 	c := &collector{
 		collector: map[string]StateCollector{},
-		cache:     cache,
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	return c
+	nc, err := nats.Connect(natsServer)
+	if err != nil {
+		return nil, err
+	}
+	defer nc.Close()
+
+	js, err := nc.JetStream()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := createStream(js, &stream{
+		Name:     natsStream,
+		Subjects: []string{strings.Join([]string{natsStream, ">"}, ".")},
+	}); err != nil {
+		c.log.Debug("create stream", "error", err.Error())
+		return nil, err
+	}
+
+	return c, nil
 }
 
 func (c *collector) WithLogger(log logging.Logger) {
@@ -64,8 +84,7 @@ func (c *collector) Start(t *types.TargetConfig, mc *ygotnddpstate.Device) error
 	defer c.m.Unlock()
 
 	nmc, err := NewStateCollector(t, mc,
-		WithStateCollectorLogger(c.log),
-		WithStateCollectorCache((*cache.Cache)(c.cache)))
+		WithStateCollectorLogger(c.log))
 	if err != nil {
 		return err
 	}

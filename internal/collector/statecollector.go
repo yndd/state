@@ -18,13 +18,10 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/karimra/gnmic/target"
 	"github.com/karimra/gnmic/types"
-	"github.com/nats-io/nats.go"
-	"github.com/openconfig/gnmi/cache"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/pkg/errors"
 	"github.com/yndd/ndd-runtime/pkg/logging"
@@ -60,16 +57,9 @@ func WithStateCollectorLogger(log logging.Logger) StateCollectorOption {
 	}
 }
 
-func WithStateCollectorCache(c *cache.Cache) StateCollectorOption {
-	return func(o *stateCollector) {
-		o.cache = c
-	}
-}
-
 // stateCollector defines the parameters for the collector
 type stateCollector struct {
 	target              *target.Target
-	cache               *cache.Cache
 	subscriptions       []*Subscription
 	ctx                 context.Context
 	targetReceiveBuffer uint
@@ -106,26 +96,6 @@ func NewStateCollector(t *types.TargetConfig, mc *ygotnddpstate.Device, opts ...
 		return nil, errors.Wrap(err, errCreateGnmiClient)
 	}
 
-	nc, err := nats.Connect("nats.ndd-system.svc.cluster.local")
-	if err != nil {
-		return nil, err
-	}
-	defer nc.Close()
-
-	js, err := nc.JetStream()
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("JetStream context:", js)
-
-	if err := createStream(js, &stream{
-		Name:     "nddpstate",
-		Subjects: []string{"nddpstate.*"},
-	}); err != nil {
-		c.log.Debug("create stream", "error", err.Error())
-		return nil, err
-	}
 	return c, nil
 }
 
