@@ -16,6 +16,8 @@ IMG_WEBHOOK ?= $(IMAGE_TAG_BASE)-webhook-controller:$(VERSION)
 # Package
 PKG ?= $(IMAGE_TAG_BASE)
 
+KIND_CLUSTER_NAME=yndd
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -65,9 +67,9 @@ vet: ## Run go vet against code.
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 test: generate fmt vet ## Run tests.
-	mkdir -p ${ENVTEST_ASSETS_DIR}
-	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.9.3/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+	# mkdir -p ${ENVTEST_ASSETS_DIR}
+	# test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.9.3/hack/setup-envtest.sh
+	# source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
 
 ##@ Build
 
@@ -84,6 +86,15 @@ docker-build: test ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 	##docker push ${IMG_WEBHOOK}
+
+kind-build: # build image and push it to kind cluster called KIND_CLUSTER_NAME
+	docker build -f Dockerfile -t ${IMG} .
+	kind load docker-image ${IMG} --name ${KIND_CLUSTER_NAME}
+
+kind-package-push:
+	rm -rf package/*.tar
+	cd package;kubectl ndd package push --local ${PKG};docker import *.tar ynddp/nddp-state:latest;cd ..
+	kind load docker-image ynddp/nddp-state:latest --name ${KIND_CLUSTER_NAME}
 
 package-build: ## build ndd package.
 	rm -rf package/nddp*

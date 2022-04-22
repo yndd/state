@@ -5,4 +5,4 @@ metadata:
   namespace: ndd-system
 spec:
   package: yndd/nddp-state:latest
-  packagePullPolicy: Always
+  # packagePullPolicy: Always

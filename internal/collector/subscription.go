@@ -64,8 +64,8 @@ func (s *Subscription) SetCancelFn(c context.CancelFunc) {
 // CreateSubscriptionRequest create a gnmi subscription
 func CreateSubscriptionRequest(prefix *gnmi.Path, s *Subscription) (*gnmi.SubscribeRequest, error) {
 	// create subscription
-
-	modeVal := gnmi.SubscriptionList_Mode_value[strings.ToUpper("STREAM")]
+	// TODO: refactor this function
+	modeVal := gnmi.SubscriptionList_STREAM
 	qos := &gnmi.QOSMarking{Marking: 21}
 
 	subscriptions := make([]*gnmi.Subscription, len(s.GetPaths()))
@@ -82,7 +82,7 @@ func CreateSubscriptionRequest(prefix *gnmi.Path, s *Subscription) (*gnmi.Subscr
 			Subscribe: &gnmi.SubscriptionList{
 				Prefix:       prefix,
 				Mode:         gnmi.SubscriptionList_Mode(modeVal),
-				Encoding:     gnmi.Encoding_JSON,
+				Encoding:     gnmi.Encoding_ASCII,
 				Subscription: subscriptions,
 				Qos:          qos,
 			},

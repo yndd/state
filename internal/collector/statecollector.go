@@ -18,13 +18,10 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/karimra/gnmic/target"
 	"github.com/karimra/gnmic/types"
-	"github.com/nats-io/nats.go"
-	"github.com/openconfig/gnmi/cache"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/pkg/errors"
 	"github.com/yndd/ndd-runtime/pkg/logging"
@@ -38,6 +35,9 @@ const (
 	defaultTargetReceivebuffer = 1000
 	defaultLockRetry           = 5 * time.Second
 	defaultRetryTimer          = 10 * time.Second
+	// nats
+	streamName     = "nddpstate"
+	streamSubjects = "nddpstate.>"
 
 	// errors
 	errCreateGnmiClient          = "cannot create gnmi client"
@@ -60,23 +60,28 @@ func WithStateCollectorLogger(log logging.Logger) StateCollectorOption {
 	}
 }
 
-func WithStateCollectorCache(c *cache.Cache) StateCollectorOption {
+func WithNamespace(ns string) StateCollectorOption {
 	return func(o *stateCollector) {
-		o.cache = c
+		o.namespace = ns
+	}
+}
+func WithStateCollectorUpdateCh(ch chan *stateMsg) StateCollectorOption {
+	return func(o *stateCollector) {
+		o.updateCh = ch
 	}
 }
 
 // stateCollector defines the parameters for the collector
 type stateCollector struct {
 	target              *target.Target
-	cache               *cache.Cache
+	updateCh            chan *stateMsg
 	subscriptions       []*Subscription
 	ctx                 context.Context
 	targetReceiveBuffer uint
 	retryTimer          time.Duration
 
-	stopCh chan bool
-
+	stopCh    chan struct{}
+	namespace string
 	//mutex sync.RWMutex
 	log logging.Logger
 }
@@ -84,6 +89,7 @@ type stateCollector struct {
 // NewCollector creates a new GNMI collector
 func NewStateCollector(t *types.TargetConfig, mc *ygotnddpstate.Device, opts ...StateCollectorOption) (StateCollector, error) {
 	c := &stateCollector{
+		// TODO: add second subscription
 		subscriptions: []*Subscription{
 			{
 				Name:        "state-collector",
@@ -91,8 +97,8 @@ func NewStateCollector(t *types.TargetConfig, mc *ygotnddpstate.Device, opts ...
 				stopCh:      make(chan bool),
 			},
 		},
-		stopCh: make(chan bool),
-		//mutex:               sync.RWMutex{},
+
+		stopCh:              make(chan struct{}),
 		targetReceiveBuffer: defaultTargetReceivebuffer,
 		retryTimer:          defaultRetryTimer,
 		ctx:                 context.Background(),
@@ -106,26 +112,6 @@ func NewStateCollector(t *types.TargetConfig, mc *ygotnddpstate.Device, opts ...
 		return nil, errors.Wrap(err, errCreateGnmiClient)
 	}
 
-	nc, err := nats.Connect("nats.ndd-system.svc.cluster.local")
-	if err != nil {
-		return nil, err
-	}
-	defer nc.Close()
-
-	js, err := nc.JetStream()
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("JetStream context:", js)
-
-	if err := createStream(js, &stream{
-		Name:     "nddpstate",
-		Subjects: []string{"nddpstate.*"},
-	}); err != nil {
-		c.log.Debug("create stream", "error", err.Error())
-		return nil, err
-	}
 	return c, nil
 }
 
@@ -187,7 +173,7 @@ func (c *stateCollector) run() error {
 			c.log.Debug("subscribe", "error", tErr)
 			return errors.New("handle subscription error")
 		case <-c.stopCh:
-			c.log.Debug("Stopping collecor process...")
+			c.log.Debug("Stopping state collector process...")
 			return nil
 		}
 	}
@@ -232,7 +218,7 @@ func (c *stateCollector) Stop() error {
 	log.Debug("Stop Collector...")
 
 	c.stopSubscription(c.ctx, c.GetSubscriptions()[0])
-	c.stopCh <- true
+	close(c.stopCh)
 
 	return nil
 }

@@ -1,10 +1,14 @@
 package collector
 
 import (
+	"context"
+	"encoding/json"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/karimra/gnmic/types"
-	"github.com/openconfig/gnmi/cache"
+	"github.com/nats-io/nats.go"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
 )
@@ -26,23 +30,40 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
+// stateMsg is the msg send from a stateCollector to the collector through an update channel
+type stateMsg struct {
+	Subject   string `json:"-"`
+	Timestamp int64  `json:"timestamp,omitempty"`
+	Operation string `json:"operation,omitempty"`
+	Data      []byte `json:"data,omitempty"`
+}
+
 type collector struct {
 	m         sync.Mutex
 	collector map[string]StateCollector
-	cache     *cache.Cache
-
-	log logging.Logger
+	// updateCh is the channel through which
+	// the collector will receive stateMsgs from
+	// the stateCollectors
+	updateCh  chan *stateMsg
+	natsAddr  string
+	namespace string
+	log       logging.Logger
 }
 
-func New(cache *cache.Cache, opts ...Option) Collector {
+func New(opts ...Option) Collector {
 	c := &collector{
 		collector: map[string]StateCollector{},
-		cache:     cache,
+		updateCh:  make(chan *stateMsg),
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
-
+	if c.natsAddr == "" {
+		c.natsAddr = defaultNATSAddr
+	}
+	c.namespace, _ = os.LookupEnv("POD_NAMESPACE")
+	c.log.Info("pod namespace", "ns", c.namespace)
+	go c.natsProducerWorker(context.TODO())
 	return c
 }
 
@@ -65,7 +86,9 @@ func (c *collector) Start(t *types.TargetConfig, mc *ygotnddpstate.Device) error
 
 	nmc, err := NewStateCollector(t, mc,
 		WithStateCollectorLogger(c.log),
-		WithStateCollectorCache((*cache.Cache)(c.cache)))
+		WithStateCollectorUpdateCh(c.updateCh),
+		WithNamespace(c.namespace),
+	)
 	if err != nil {
 		return err
 	}
@@ -90,4 +113,53 @@ func (c *collector) Stop(target string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *collector) natsProducerWorker(ctx context.Context) {
+	var nc *nats.Conn
+	var jsc nats.JetStreamContext
+	var err error
+STARTCONN:
+	nc, err = nats.Connect(c.natsAddr)
+	if err != nil {
+		time.Sleep(time.Second)
+		goto STARTCONN
+	}
+	defer nc.Close()
+	jsc, err = nc.JetStream()
+	if err != nil {
+		c.log.Info("inconsistent JetStream Options", "error", err)
+	}
+	err = createStream(jsc, &nats.StreamConfig{
+		Name:     streamName,
+		Subjects: []string{streamSubjects},
+	})
+	if err != nil {
+		nc.Close()
+		time.Sleep(time.Second)
+		goto STARTCONN
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case sm := <-c.updateCh:
+			// TOOD: move json marshaling to the stateCollector
+			// rather than in the worker
+			c.log.Info("state msg", "msg", sm)
+			b, err := json.Marshal(sm)
+			if err != nil {
+				c.log.Info("failed to marshal msg", "err", err)
+				continue
+			}
+			c.log.Info("JetStream", "subject", sm.Subject)
+			c.log.Info("JetStream", "data", string(b))
+			_, err = jsc.Publish(sm.Subject, b)
+			if err != nil {
+				c.log.Info("JetStream Publish error", "error", err)
+				nc.Close()
+				goto STARTCONN
+			}
+		}
+	}
 }

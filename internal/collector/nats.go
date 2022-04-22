@@ -17,31 +17,27 @@ limitations under the License.
 package collector
 
 import (
-	"strings"
+	"errors"
 
 	"github.com/nats-io/nats.go"
 )
 
-type stream struct {
-	Name     string
-	Subjects []string
-}
+const (
+	defaultNATSAddr = "nats.ndd-system.svc.cluster.local"
+)
 
-// createStream creates a stream by using JetStreamContext
-func createStream(js nats.JetStreamContext, str *stream) error {
+// createStream creates a stream if it does not exist using JetStreamContext
+func createStream(js nats.JetStreamContext, str *nats.StreamConfig) error {
 	// Check if the stream already exists; if not, create it.
 	stream, err := js.StreamInfo(str.Name)
 	if err != nil {
-		// ignore not found
-		if !strings.Contains(err.Error(), "not found") {
+		// ignore Notfound error and continue
+		if !errors.Is(err, nats.ErrStreamNotFound) {
 			return err
 		}
 	}
 	if stream == nil {
-		_, err = js.AddStream(&nats.StreamConfig{
-			Name:     str.Name,
-			Subjects: str.Subjects,
-		})
+		_, err = js.AddStream(str)
 		if err != nil {
 			return err
 		}
