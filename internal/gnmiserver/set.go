@@ -69,9 +69,8 @@ func (s *gnmiServerImpl) Set(ctx context.Context, req *gnmi.SetRequest) (*gnmi.S
 		}
 		ce, err := s.config.Get(target)
 		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, errTargetNotFoundInCache)
+			return nil, status.Errorf(codes.InvalidArgument, errTargetNotFound)
 		}
-		// s.cache.Add(target)
 
 		if err := validator.ValidateUpdate(ce, req.GetReplace(), true, false, validator.Origin_GnmiServer); err != nil {
 			return nil, status.Errorf(codes.Internal, err.Error())
@@ -90,7 +89,7 @@ func (s *gnmiServerImpl) Set(ctx context.Context, req *gnmi.SetRequest) (*gnmi.S
 		}
 		ce, err := s.config.Get(target)
 		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, errTargetNotFoundInCache)
+			return nil, status.Errorf(codes.InvalidArgument, errTargetNotFound)
 		}
 
 		if err := validator.ValidateDelete(ce, req.GetDelete(), validator.Origin_GnmiServer); err != nil {
@@ -120,7 +119,7 @@ func (s *gnmiServerImpl) initializeConfig(target string) error {
 
 	ce, err := s.config.Get(target)
 	if err != nil {
-		return errors.Wrap(err, errTargetNotFoundInCache)
+		return errors.Wrap(err, errTargetNotFound)
 	}
 	m := ce.GetModel()
 
@@ -155,7 +154,6 @@ func (s *gnmiServerImpl) handleSet(ctx context.Context, target string) error {
 		if err := s.config.Delete(target); err != nil {
 			return err
 		}
-		// s.cache.Remove(target)
 
 		return nil
 	}

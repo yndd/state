@@ -49,12 +49,6 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
-// func WithCache(c *cache.Cache) Option {
-// 	return func(s GnmiServer) {
-// 		s.WithCache(c)
-// 	}
-// }
-
 func WithConfig(c config.Config) Option {
 	return func(s GnmiServer) {
 		s.WithConfig(c)
@@ -100,8 +94,6 @@ type gnmiServerImpl struct {
 	newNetworkNode func() ndrv1.Nn
 	// config per target
 	config config.Config
-	// cache per target
-	// cache *cache.Cache
 	// state collectors
 	collector collector.Collector
 	// gnmi calls

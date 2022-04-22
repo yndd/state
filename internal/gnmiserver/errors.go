@@ -31,7 +31,7 @@ const (
 	errInvalidPath                  = "invalid Path"
 	errGetValue                     = "cannot get Value from update"
 	errGetSubscribe                 = "cannot get subscription definition, the subscribe request must contain a subscription definition"
-	errTargetNotFoundInCache        = "cannot get target in cache"
+	errTargetNotFound               = "cannot get target"
 	errGetNetworkNode               = "cannot get network node resource"
 	errEmptyTargetSecretReference   = "empty target secret reference"
 	errCredentialSecretDoesNotExist = "credential secret does not exist"

@@ -122,13 +122,11 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "unable to create webhook for state")
 		}
 
-		// cache := cache.New(nil)
 		cfg := config.New()
 
 		// intialize the gnmiserver
 		s := gnmiserver.New(
 			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			// gnmiserver.WithCache(cache),
 			gnmiserver.WithConfig(cfg),
 			gnmiserver.WithK8sClient(mgr.GetClient()),
 		)

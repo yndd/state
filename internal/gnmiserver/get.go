@@ -73,7 +73,7 @@ func (s *gnmiServerImpl) HandleGet(req *gnmi.GetRequest) ([]*gnmi.Notification, 
 
 	ce, err := s.config.Get(target)
 	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "cache not ready")
+		return nil, status.Errorf(codes.Unavailable, "targer config not ready")
 	}
 
 	goStruct := ce.GetRunningConfig() // no DeepCopy required, since we get a deepcopy already
@@ -201,7 +201,7 @@ func ptr(v reflect.Value) reflect.Value {
 	return pv
 }
 
-// createLeafNodeUpdate processes the list of returned nodes from the cache, which are Leaf Nodes, carrying terminal values
+// createLeafNodeUpdate processes the list of returned nodes from the cfg, which are Leaf Nodes, carrying terminal values
 // rather then ygot struct kind of data. From these, the resulting gnmi.update stucts are being populated.
 func createLeafNodeUpdate(node interface{}, path *gnmi.Path, model *model.Model) (*gnmi.Update, error) {
 	var val *gnmi.TypedValue
