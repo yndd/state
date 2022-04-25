@@ -26,7 +26,7 @@ const (
 	errKeyNotPresentinPath          = "missing key in path"
 	errSchema                       = "cannot update Schema"
 	errJSONMarshal                  = "cannot Marshal json object"
-	errJSONUnMarshal                = "canot Unmarshal json object"
+	errJSONUnMarshal                = "cannot Unmarshal json object"
 	errDependencyCheckFailed        = "cannot create object since the dependency is not present"
 	errInvalidPath                  = "invalid Path"
 	errGetValue                     = "cannot get Value from update"

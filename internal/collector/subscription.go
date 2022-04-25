@@ -18,8 +18,8 @@ package collector
 
 import (
 	"context"
-	"strings"
 
+	gapi "github.com/karimra/gnmic/api"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/yndd/ndd-yang/pkg/yparser"
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
@@ -30,8 +30,7 @@ type Subscription struct {
 	Name        string
 	StateConfig *ygotnddpstate.Device
 
-	stopCh   chan bool
-	cancelFn context.CancelFunc
+	cfn context.CancelFunc
 }
 
 func (s *Subscription) GetName() string {
@@ -53,40 +52,26 @@ func (s *Subscription) SetName(n string) {
 	s.Name = n
 }
 
-func (s *Subscription) SetStopChannel(c chan bool) {
-	s.stopCh = c
-}
-
 func (s *Subscription) SetCancelFn(c context.CancelFunc) {
-	s.cancelFn = c
+	s.cfn = c
 }
 
-// CreateSubscriptionRequest create a gnmi subscription
-func CreateSubscriptionRequest(prefix *gnmi.Path, s *Subscription) (*gnmi.SubscribeRequest, error) {
+// createSubscribeRequest create a gnmi subscription
+func (s *Subscription) createSubscribeRequest() (*gnmi.SubscribeRequest, error) {
 	// create subscription
-	// TODO: refactor this function
-	modeVal := gnmi.SubscriptionList_STREAM
-	qos := &gnmi.QOSMarking{Marking: 21}
-
-	subscriptions := make([]*gnmi.Subscription, len(s.GetPaths()))
-	for i, p := range s.GetPaths() {
-		subscriptions[i] = &gnmi.Subscription{Path: p}
-		switch gnmi.SubscriptionList_Mode(modeVal) {
-		case gnmi.SubscriptionList_STREAM:
-			mode := gnmi.SubscriptionMode_value[strings.Replace(strings.ToUpper("ON_CHANGE"), "-", "_", -1)]
-			subscriptions[i].Mode = gnmi.SubscriptionMode(mode)
+	gnmiOpts := []gapi.GNMIOption{
+		gapi.SubscriptionListModeSTREAM(),
+		gapi.EncodingASCII(),
+	}
+	for _, st := range s.StateConfig.StateEntry {
+		for _, p := range st.Path {
+			gnmiOpts = append(gnmiOpts,
+				gapi.Subscription(
+					gapi.Path(p),
+					gapi.SubscriptionModeON_CHANGE(),
+				),
+			)
 		}
 	}
-	req := &gnmi.SubscribeRequest{
-		Request: &gnmi.SubscribeRequest_Subscribe{
-			Subscribe: &gnmi.SubscriptionList{
-				Prefix:       prefix,
-				Mode:         gnmi.SubscriptionList_Mode(modeVal),
-				Encoding:     gnmi.Encoding_ASCII,
-				Subscription: subscriptions,
-				Qos:          qos,
-			},
-		},
-	}
-	return req, nil
+	return gapi.NewSubscribeRequest(gnmiOpts...)
 }

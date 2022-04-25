@@ -16,3 +16,22 @@ spec:
     path:
     - /interface[name=*]/oper-state
     - /interface[name=*]/subinterface[index=*]/oper-state
+---
+apiVersion: state.nddp.yndd.io/v1alpha1
+kind: State
+metadata:
+  name: state-itfce-srl2
+  namespace: ndd-system
+spec:
+  deploymentPolicy: Active
+  deletionPolicy: Delete
+  networkNodeRef:
+    name: clab-kind-connect-srl2
+  properties:
+    name: interface
+    prefix: itfce
+    description: interface-state-collector
+    admin-state: enable
+    path:
+    - /interface[name=*]/oper-state
+    - /interface[name=*]/subinterface[index=*]/oper-state

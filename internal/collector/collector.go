@@ -2,25 +2,27 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"sync"
-	"time"
 
 	"github.com/karimra/gnmic/types"
-	"github.com/nats-io/nats.go"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
 )
 
-// Option can be used to manipulate Options.
+// Option can be used to manipulate Collector config.
 type Option func(Collector)
 
 type Collector interface {
+	// add a logger to Collector
 	WithLogger(log logging.Logger)
+	// check if a target exists
 	IsActive(target string) bool
-	Start(t *types.TargetConfig, mc *ygotnddpstate.Device) error
-	Stop(target string) error
+	// start target collector
+	StartTarget(t *types.TargetConfig, mc *ygotnddpstate.Device) error
+	// stop target collector
+	StopTarget(target string) error
+	// stop all target collectors
+	Stop() error
 }
 
 // WithLogger specifies how the collector logs messages.
@@ -38,22 +40,21 @@ type stateMsg struct {
 	Data      []byte `json:"data,omitempty"`
 }
 
+// collector is the implementation of Collector interface
 type collector struct {
-	m         sync.Mutex
-	collector map[string]StateCollector
-	// updateCh is the channel through which
-	// the collector will receive stateMsgs from
-	// the stateCollectors
-	updateCh  chan *stateMsg
-	natsAddr  string
-	namespace string
-	log       logging.Logger
+	m sync.Mutex
+	// state collectors indexed by target name
+	targetCollectors map[string]TargetCollector
+	ctx              context.Context
+	cfn              context.CancelFunc
+	natsAddr         string
+	log              logging.Logger
 }
 
-func New(opts ...Option) Collector {
+// New creates a new Collector interface
+func New(ctx context.Context, opts ...Option) Collector {
 	c := &collector{
-		collector: map[string]StateCollector{},
-		updateCh:  make(chan *stateMsg),
+		targetCollectors: map[string]TargetCollector{},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -61,9 +62,7 @@ func New(opts ...Option) Collector {
 	if c.natsAddr == "" {
 		c.natsAddr = defaultNATSAddr
 	}
-	c.namespace, _ = os.LookupEnv("POD_NAMESPACE")
-	c.log.Info("pod namespace", "ns", c.namespace)
-	go c.natsProducerWorker(context.TODO())
+	c.ctx, c.cfn = context.WithCancel(ctx)
 	return c
 }
 
@@ -74,92 +73,52 @@ func (c *collector) WithLogger(log logging.Logger) {
 func (c *collector) IsActive(target string) bool {
 	c.m.Lock()
 	defer c.m.Unlock()
-	if _, ok := c.collector[target]; !ok {
-		return false
-	}
-	return true
+	_, ok := c.targetCollectors[target]
+	return ok
 }
 
-func (c *collector) Start(t *types.TargetConfig, mc *ygotnddpstate.Device) error {
+func (c *collector) StartTarget(tc *types.TargetConfig, mc *ygotnddpstate.Device) error {
 	c.m.Lock()
 	defer c.m.Unlock()
-
-	nmc, err := NewStateCollector(t, mc,
-		WithStateCollectorLogger(c.log),
-		WithStateCollectorUpdateCh(c.updateCh),
-		WithNamespace(c.namespace),
+	// create a new target collector
+	tColl, err := NewTargetCollector(c.ctx, tc, mc,
+		WithTargetCollectorLogger(c.log),
+		WithTargetCollectorNATSAddr(c.natsAddr),
 	)
 	if err != nil {
 		return err
 	}
 
-	c.collector[t.Name] = nmc
-	if err := c.collector[t.Name].Start(); err != nil {
+	c.targetCollectors[tc.Name] = tColl
+	if err := tColl.Start(c.ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *collector) Stop(target string) error {
+func (c *collector) StopTarget(target string) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	mc, ok := c.collector[target]
+	tColl, ok := c.targetCollectors[target]
 	if !ok {
 		return nil
 	}
-
-	if err := mc.Stop(); err != nil {
-		return err
-	}
-	return nil
+	// delete state collector
+	delete(c.targetCollectors, target)
+	return tColl.Stop()
 }
 
-func (c *collector) natsProducerWorker(ctx context.Context) {
-	var nc *nats.Conn
-	var jsc nats.JetStreamContext
-	var err error
-STARTCONN:
-	nc, err = nats.Connect(c.natsAddr)
-	if err != nil {
-		time.Sleep(time.Second)
-		goto STARTCONN
-	}
-	defer nc.Close()
-	jsc, err = nc.JetStream()
-	if err != nil {
-		c.log.Info("inconsistent JetStream Options", "error", err)
-	}
-	err = createStream(jsc, &nats.StreamConfig{
-		Name:     streamName,
-		Subjects: []string{streamSubjects},
-	})
-	if err != nil {
-		nc.Close()
-		time.Sleep(time.Second)
-		goto STARTCONN
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case sm := <-c.updateCh:
-			// TOOD: move json marshaling to the stateCollector
-			// rather than in the worker
-			c.log.Info("state msg", "msg", sm)
-			b, err := json.Marshal(sm)
-			if err != nil {
-				c.log.Info("failed to marshal msg", "err", err)
-				continue
-			}
-			c.log.Info("JetStream", "subject", sm.Subject)
-			c.log.Info("JetStream", "data", string(b))
-			_, err = jsc.Publish(sm.Subject, b)
-			if err != nil {
-				c.log.Info("JetStream Publish error", "error", err)
-				nc.Close()
-				goto STARTCONN
-			}
+func (c *collector) Stop() error {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	for target, tColl := range c.targetCollectors {
+		delete(c.targetCollectors, target)
+		err := tColl.Stop()
+		if err != nil {
+			c.log.Debug("failed to stop target collector", "target", target, "error", err)
 		}
 	}
+	return nil
 }

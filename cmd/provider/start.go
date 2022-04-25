@@ -122,13 +122,12 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "unable to create webhook for state")
 		}
 
-		// cache := cache.New(nil)
 		cfg := config.New()
 
-		// intialize the gnmiserver
+		// initialize the gnmiserver
 		s := gnmiserver.New(
+			cmd.Context(),
 			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			// gnmiserver.WithCache(cache),
 			gnmiserver.WithConfig(cfg),
 			gnmiserver.WithK8sClient(mgr.GetClient()),
 		)
@@ -175,18 +174,3 @@ func nddCtlrOptions(c int) controller.Options {
 		RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),
 	}
 }
-
-/*
-func getGnmiServerAddress(podname string) string {
-	//revision := strings.Split(podname, "-")[len(strings.Split(podname, "-"))-3]
-	var newName string
-	for i, s := range strings.Split(podname, "-") {
-		if i == 0 {
-			newName = s
-		} else if i <= (len(strings.Split(podname, "-")) - 3) {
-			newName += "-" + s
-		}
-	}
-	return pkgmetav1.PrefixGnmiService + "-" + newName + "." + pkgmetav1.NamespaceLocalK8sDNS + strconv.Itoa((pkgmetav1.GnmiServerPort))
-}
-*/

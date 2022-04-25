@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -11,9 +12,15 @@ import (
 const (
 	operationUpdate = "update"
 	operationDelete = "delete"
+	//
+	dotReplChar   = "^"
+	spaceReplChar = "~"
 )
 
-func (c *stateCollector) handleSubscription(resp *gnmi.SubscribeResponse) error {
+var regDot = regexp.MustCompile(`\.`)
+var regSpace = regexp.MustCompile(`\s`)
+
+func (c *targetCollector) handleSubscribeResponse(resp *gnmi.SubscribeResponse) error {
 	targetName := c.GetTarget().Config.Name
 
 	log := c.log.WithValues("Target", targetName)
@@ -35,9 +42,8 @@ func (c *stateCollector) handleSubscription(resp *gnmi.SubscribeResponse) error 
 }
 
 // TODO: sanitize subject before returning
-func (c *stateCollector) notificationToStateMsg(targetName string, n *gnmi.Notification) []*stateMsg {
+func (c *targetCollector) notificationToStateMsg(targetName string, n *gnmi.Notification) []*stateMsg {
 	sb := new(strings.Builder)
-	// fmt.Fprintf(sb, "%s.%s.%s", streamName, c.namespace, targetName)
 	fmt.Fprintf(sb, "%s.%s", streamName, targetName)
 	if pr := gNMIPathToSubject(n.GetPrefix()); pr != "" {
 		fmt.Fprintf(sb, ".%s", pr)
@@ -48,23 +54,27 @@ func (c *stateCollector) notificationToStateMsg(targetName string, n *gnmi.Notif
 		if pr := gNMIPathToSubject(upd.GetPath()); pr != "" {
 			sb.Reset()
 			fmt.Fprintf(sb, "%s.%s", prefix, pr)
-			result = append(result, &stateMsg{
+			sm := &stateMsg{
 				Subject:   sb.String(),
 				Timestamp: n.GetTimestamp(),
 				Operation: operationUpdate,
 				Data:      []byte(upd.Val.GetStringVal()),
-			})
+			}
+			c.log.Debug("state message", "notification", n, "msg", sm)
+			result = append(result, sm)
 		}
 	}
 	for _, del := range n.GetDelete() {
 		if pr := gNMIPathToSubject(del); pr != "" {
 			sb.Reset()
 			fmt.Fprintf(sb, "%s.%s", prefix, pr)
-			result = append(result, &stateMsg{
+			sm := &stateMsg{
 				Subject:   sb.String(),
 				Timestamp: n.GetTimestamp(),
 				Operation: operationDelete,
-			})
+			}
+			c.log.Debug("state message", "notification", n, "msg", sm)
+			result = append(result, sm)
 		}
 	}
 	return result
@@ -90,17 +100,21 @@ func gNMIPathToSubject(p *gnmi.Path) string {
 				kNames = append(kNames, k)
 			}
 			sort.Strings(kNames)
-			fmt.Fprintf(sb, ".{")
 			for _, k := range kNames {
-				fmt.Fprintf(sb, "%s=%s", k, e.GetKey()[k])
+				sk := sanitizeKey(e.GetKey()[k])
+				fmt.Fprintf(sb, ".{%s=%s}", k, sk)
 			}
-			fmt.Fprintf(sb, "}")
 		}
 	}
 	return sb.String()
 }
 
-func getValue(v *gnmi.TypedValue) (string, []byte) {
-	// TODO: for handling json/json_ietf encodings
-	return "", nil
+func sanitizeKey(k string) string {
+	s := regDot.ReplaceAllString(k, dotReplChar)
+	return regSpace.ReplaceAllString(s, spaceReplChar)
+}
+
+// TODO:
+func subjectTogNMIPath(s string) string {
+	return ""
 }

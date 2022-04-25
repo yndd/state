@@ -49,12 +49,6 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
-// func WithCache(c *cache.Cache) Option {
-// 	return func(s GnmiServer) {
-// 		s.WithCache(c)
-// 	}
-// }
-
 func WithConfig(c config.Config) Option {
 	return func(s GnmiServer) {
 		s.WithConfig(c)
@@ -100,21 +94,16 @@ type gnmiServerImpl struct {
 	newNetworkNode func() ndrv1.Nn
 	// config per target
 	config config.Config
-	// cache per target
-	// cache *cache.Cache
-	// state collectors
+	// state collector
 	collector collector.Collector
 	// gnmi calls
 	subscribeRPCsem *semaphore.Weighted
 	unaryRPCsem     *semaphore.Weighted
 	// logging and parsing
 	log logging.Logger
-
-	// context
-	ctx context.Context
 }
 
-func New(opts ...Option) GnmiServer {
+func New(ctx context.Context, opts ...Option) GnmiServer {
 	nn := func() ndrv1.Nn { return &ndrv1.NetworkNode{} }
 	s := &gnmiServerImpl{
 		cfg: &serverConfig{
@@ -129,10 +118,9 @@ func New(opts ...Option) GnmiServer {
 	for _, opt := range opts {
 		opt(s)
 	}
-	s.collector = collector.New(
+	s.collector = collector.New(ctx,
 		collector.WithLogger(s.log),
 	)
-	s.ctx = context.Background()
 
 	return s
 }
@@ -152,13 +140,10 @@ func (s *gnmiServerImpl) WithK8sClient(client client.Client) {
 func (s *gnmiServerImpl) Start() error {
 	log := s.log.WithValues("grpcServerAddress", s.cfg.address)
 	log.Debug("grpc server run...")
-
-	errChannel := make(chan error)
 	go func() {
 		if err := s.run(); err != nil {
-			errChannel <- errors.Wrap(err, errStartGRPCServer)
+			log.Debug("failed to start gNMI server", "error", err)
 		}
-		errChannel <- nil
 	}()
 	return nil
 }
