@@ -71,7 +71,7 @@ func (s *gnmiServerImpl) Set(ctx context.Context, req *gnmi.SetRequest) (*gnmi.S
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, errTargetNotFoundInCache)
 		}
-		s.cache.Add(target)
+		// s.cache.Add(target)
 
 		if err := validator.ValidateUpdate(ce, req.GetReplace(), true, false, validator.Origin_GnmiServer); err != nil {
 			return nil, status.Errorf(codes.Internal, err.Error())
@@ -149,14 +149,15 @@ func (s *gnmiServerImpl) handleSet(ctx context.Context, target string) error {
 	// validate if there are still state entries in the config, if not we should delete the target
 	if len(runningConfig.StateEntry) == 0 {
 		if s.collector.IsActive(target) {
-			s.collector.Stop(target)
+			err = s.collector.StopTarget(target)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err := s.config.Delete(target); err != nil {
 			return err
 		}
-		s.cache.Remove(target)
-
 		return nil
 	}
 	// states exists, we need to restart the collector with the new subscription
@@ -166,14 +167,14 @@ func (s *gnmiServerImpl) handleSet(ctx context.Context, target string) error {
 	}
 	if s.collector.IsActive(target) {
 		log.Debug("handleSet", "Active", true)
-		if err := s.collector.Stop(target); err != nil {
+		if err := s.collector.StopTarget(target); err != nil {
 			log.Debug("handleSet", "Stop success", false)
 			return err
 		}
 		s.log.Debug("handleSet", "Stop success", true)
 
 	}
-	if err := s.collector.Start(tc, runningConfig); err != nil {
+	if err := s.collector.StartTarget(tc, runningConfig); err != nil {
 		log.Debug("handleSet", "Start success", false)
 		return err
 	}

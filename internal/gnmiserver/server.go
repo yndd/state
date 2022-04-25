@@ -21,7 +21,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/openconfig/gnmi/cache"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/pkg/errors"
 	ndrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
@@ -50,12 +49,6 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
-func WithCache(c *cache.Cache) Option {
-	return func(s GnmiServer) {
-		s.WithCache(c)
-	}
-}
-
 func WithConfig(c config.Config) Option {
 	return func(s GnmiServer) {
 		s.WithConfig(c)
@@ -71,7 +64,6 @@ func WithK8sClient(client client.Client) Option {
 type GnmiServer interface {
 	WithLogger(log logging.Logger)
 	WithK8sClient(client client.Client)
-	WithCache(c *cache.Cache)
 	WithConfig(c config.Config)
 	Start() error
 }
@@ -102,21 +94,16 @@ type gnmiServerImpl struct {
 	newNetworkNode func() ndrv1.Nn
 	// config per target
 	config config.Config
-	// cache per target
-	cache *cache.Cache
-	// state collectors
+	// state collector
 	collector collector.Collector
 	// gnmi calls
 	subscribeRPCsem *semaphore.Weighted
 	unaryRPCsem     *semaphore.Weighted
 	// logging and parsing
 	log logging.Logger
-
-	// context
-	ctx context.Context
 }
 
-func New(opts ...Option) GnmiServer {
+func New(ctx context.Context, opts ...Option) GnmiServer {
 	nn := func() ndrv1.Nn { return &ndrv1.NetworkNode{} }
 	s := &gnmiServerImpl{
 		cfg: &serverConfig{
@@ -131,20 +118,15 @@ func New(opts ...Option) GnmiServer {
 	for _, opt := range opts {
 		opt(s)
 	}
-	s.collector = collector.New(s.cache,
+	s.collector = collector.New(ctx,
 		collector.WithLogger(s.log),
 	)
-	s.ctx = context.Background()
 
 	return s
 }
 
 func (s *gnmiServerImpl) WithLogger(log logging.Logger) {
 	s.log = log
-}
-
-func (s *gnmiServerImpl) WithCache(c *cache.Cache) {
-	s.cache = c
 }
 
 func (s *gnmiServerImpl) WithConfig(c config.Config) {
@@ -158,13 +140,10 @@ func (s *gnmiServerImpl) WithK8sClient(client client.Client) {
 func (s *gnmiServerImpl) Start() error {
 	log := s.log.WithValues("grpcServerAddress", s.cfg.address)
 	log.Debug("grpc server run...")
-
-	errChannel := make(chan error)
 	go func() {
 		if err := s.run(); err != nil {
-			errChannel <- errors.Wrap(err, errStartGRPCServer)
+			log.Debug("failed to start gNMI server", "error", err)
 		}
-		errChannel <- nil
 	}()
 	return nil
 }

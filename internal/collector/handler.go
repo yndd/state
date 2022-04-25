@@ -1,15 +1,26 @@
 package collector
 
 import (
-	"math"
-	"strconv"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
-	"github.com/pkg/errors"
-	"github.com/yndd/ndd-yang/pkg/yparser"
 )
 
-func (c *stateCollector) handleSubscription(resp *gnmi.SubscribeResponse) error {
+const (
+	operationUpdate = "update"
+	operationDelete = "delete"
+	//
+	dotReplChar   = "^"
+	spaceReplChar = "~"
+)
+
+var regDot = regexp.MustCompile(`\.`)
+var regSpace = regexp.MustCompile(`\s`)
+
+func (c *targetCollector) handleSubscribeResponse(resp *gnmi.SubscribeResponse) error {
 	targetName := c.GetTarget().Config.Name
 
 	log := c.log.WithValues("Target", targetName)
@@ -17,39 +28,10 @@ func (c *stateCollector) handleSubscription(resp *gnmi.SubscribeResponse) error 
 
 	switch resp.GetResponse().(type) {
 	case *gnmi.SubscribeResponse_Update:
-		//log.Debug("handle target update from device", "Prefix", resp.GetUpdate().GetPrefix())
+		log.Debug("handle target update from device", "Prefix", resp.GetUpdate().GetPrefix())
 
-		// check if the target cache exists
-		if !c.cache.HasTarget(targetName) {
-			log.Debug("handle target update target not found in cache")
-			return errors.New("target cache does not exist")
-		}
-		//n := resp.GetUpdate()
-
-		for _, u := range resp.GetUpdate().GetUpdate() {
-			val, err := yparser.GetValue(u.GetVal())
-			if err != nil {
-				continue
-			}
-			// this is to filter out boolean
-			/*
-				_, err = getFloat(val)
-				if err != nil {
-					continue
-				}
-			*/
-
-			n := &gnmi.Notification{
-				Timestamp: resp.GetUpdate().GetTimestamp(),
-				Prefix:    &gnmi.Path{Target: targetName},
-				Update:    []*gnmi.Update{u},
-			}
-
-			log.Debug("handle target update", "Path", yparser.GnmiPath2XPath(u.GetPath(), true), "Value", val)
-			if err := c.cache.GnmiUpdate(n); err != nil {
-				log.Debug("handle target update", "error", err, "Path", yparser.GnmiPath2XPath(u.GetPath(), true), "Value", u.GetVal())
-				return errors.New("cache update failed")
-			}
+		for _, msg := range c.notificationToStateMsg(targetName, resp.GetUpdate()) {
+			c.updateCh <- msg
 		}
 
 	case *gnmi.SubscribeResponse_SyncResponse:
@@ -59,39 +41,80 @@ func (c *stateCollector) handleSubscription(resp *gnmi.SubscribeResponse) error 
 	return nil
 }
 
-func getFloat(v interface{}) (float64, error) {
-	switch i := v.(type) {
-	case float64:
-		return float64(i), nil
-	case float32:
-		return float64(i), nil
-	case int64:
-		return float64(i), nil
-	case int32:
-		return float64(i), nil
-	case int16:
-		return float64(i), nil
-	case int8:
-		return float64(i), nil
-	case uint64:
-		return float64(i), nil
-	case uint32:
-		return float64(i), nil
-	case uint16:
-		return float64(i), nil
-	case uint8:
-		return float64(i), nil
-	case int:
-		return float64(i), nil
-	case uint:
-		return float64(i), nil
-	case string:
-		f, err := strconv.ParseFloat(i, 64)
-		if err != nil {
-			return math.NaN(), err
-		}
-		return f, err
-	default:
-		return math.NaN(), errors.New("getFloat: unknown value is of incompatible type")
+// TODO: sanitize subject before returning
+func (c *targetCollector) notificationToStateMsg(targetName string, n *gnmi.Notification) []*stateMsg {
+	sb := new(strings.Builder)
+	fmt.Fprintf(sb, "%s.%s", streamName, targetName)
+	if pr := gNMIPathToSubject(n.GetPrefix()); pr != "" {
+		fmt.Fprintf(sb, ".%s", pr)
 	}
+	prefix := sb.String()
+	result := make([]*stateMsg, 0, len(n.GetUpdate())+len(n.GetDelete()))
+	for _, upd := range n.GetUpdate() {
+		if pr := gNMIPathToSubject(upd.GetPath()); pr != "" {
+			sb.Reset()
+			fmt.Fprintf(sb, "%s.%s", prefix, pr)
+			sm := &stateMsg{
+				Subject:   sb.String(),
+				Timestamp: n.GetTimestamp(),
+				Operation: operationUpdate,
+				Data:      []byte(upd.Val.GetStringVal()),
+			}
+			c.log.Debug("state message", "notification", n, "msg", sm)
+			result = append(result, sm)
+		}
+	}
+	for _, del := range n.GetDelete() {
+		if pr := gNMIPathToSubject(del); pr != "" {
+			sb.Reset()
+			fmt.Fprintf(sb, "%s.%s", prefix, pr)
+			sm := &stateMsg{
+				Subject:   sb.String(),
+				Timestamp: n.GetTimestamp(),
+				Operation: operationDelete,
+			}
+			c.log.Debug("state message", "notification", n, "msg", sm)
+			result = append(result, sm)
+		}
+	}
+	return result
+}
+
+func gNMIPathToSubject(p *gnmi.Path) string {
+	if p == nil {
+		return ""
+	}
+	sb := new(strings.Builder)
+	if p.GetOrigin() != "" {
+		fmt.Fprintf(sb, "%s.", p.GetOrigin())
+	}
+	for i, e := range p.GetElem() {
+		if i > 0 {
+			sb.WriteString(".")
+		}
+		sb.WriteString(e.Name)
+		if len(e.Key) > 0 {
+			// sort keys by name
+			kNames := make([]string, 0, len(e.Key))
+			for k := range e.Key {
+				kNames = append(kNames, k)
+			}
+			sort.Strings(kNames)
+			for _, k := range kNames {
+				sk := sanitizeKey(e.GetKey()[k])
+				fmt.Fprintf(sb, ".{%s=%s}", k, sk)
+			}
+		}
+	}
+	return sb.String()
+}
+
+func sanitizeKey(k string) string {
+	s := regDot.ReplaceAllString(k, dotReplChar)
+	return regSpace.ReplaceAllString(s, spaceReplChar)
+}
+
+// TODO:
+func subjectTogNMIPath(s string) string {
+	return ""
 }
