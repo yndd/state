@@ -234,6 +234,13 @@ func Test_gNMIPathToSubject(t *testing.T) {
 			},
 			want: "foo.{k1=1^1^1^1}.{k2=2^2^2^2}",
 		},
+		{
+			name: "nil_path",
+			args: args{
+				p: nil,
+			},
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

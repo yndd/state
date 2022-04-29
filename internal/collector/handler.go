@@ -113,8 +113,3 @@ func sanitizeKey(k string) string {
 	s := regDot.ReplaceAllString(k, dotReplChar)
 	return regSpace.ReplaceAllString(s, spaceReplChar)
 }
-
-// TODO:
-func subjectTogNMIPath(s string) string {
-	return ""
-}
