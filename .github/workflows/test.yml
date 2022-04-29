@@ -48,10 +48,10 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@latest
           staticcheck ./...
           
-    # Run vet & lint on the code
-    - name: Run vet & lint
-      run: |
-        go vet .
-        golint .  
+#    # Run vet & lint on the code
+#    - name: Run vet & lint
+#      run: |
+#        go vet .
+#        golint .  
 
     
