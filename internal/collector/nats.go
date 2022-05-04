@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultNATSAddr = "nats.ndd-system.svc.cluster.local"
-	natsAddrTmpl    = "%s.%s.svc.%s" // TODO: use to figure out nats address instead of using the default value
+	// natsAddrTmpl    = "%s.%s.svc.%s" // TODO: use to figure out nats address instead of using the default value
 )
 
 // createStream creates a stream if it does not exist using JetStreamContext

@@ -32,10 +32,10 @@ import (
 
 const (
 	// timers
-	defaultTimeout             = 5 * time.Second
+	// defaultTimeout             = 5 * time.Second
 	defaultTargetReceiveBuffer = 1000
-	defaultLockRetry           = 5 * time.Second
-	defaultRetryTimer          = 10 * time.Second
+	//defaultLockRetry           = 5 * time.Second
+	defaultRetryTimer = 10 * time.Second
 	// nats
 	streamName     = "nddpstate"
 	streamSubjects = "nddpstate.>"
