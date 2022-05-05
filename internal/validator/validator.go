@@ -49,19 +49,6 @@ func ValidateCreate(ce config.ConfigEntry, x interface{}) (ygot.ValidatedGoStruc
 		fmt.Printf("ValidateCreate: MergeStructInto error %s\n", err.Error())
 		return nil, err
 	}
-	/*
-		j, err := ygot.EmitJSON(curGoStruct, &ygot.EmitJSONConfig{
-			Format:         ygot.RFC7951,
-			SkipValidation: true,
-		})
-		if err != nil {
-			fmt.Printf("ValidateCreate: EmitJSON error %s\n", err.Error())
-			return nil, err
-		}
-		fmt.Println("json newConfig start")
-		fmt.Println(j)
-		fmt.Println("json newConfig end")
-	*/
 
 	if err := curGoStruct.Validate(); err != nil {
 		fmt.Printf("ValidateCreate: validation error %s\n", err.Error())
