@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type Config interface {
+type ConfigStore interface {
 	//Lock()
 	//Unlock()
 	HasTarget(target string) bool
@@ -15,26 +15,29 @@ type Config interface {
 	GetTargets() []string
 }
 
-type config struct {
+type configStore struct {
 	m sync.RWMutex
 
 	config map[string]ConfigEntry
 }
 
-func New() Config {
-	return &config{
+// NewConfigStore creates a new Config map
+func NewConfigStore() ConfigStore {
+	return &configStore{
 		config: map[string]ConfigEntry{},
 	}
 }
 
-func (c *config) HasTarget(target string) bool {
+// HasTarget checks if the given target is present in the config map
+func (c *configStore) HasTarget(target string) bool {
 	c.m.Lock()
 	defer c.m.Unlock()
 	_, ok := c.config[target]
 	return ok
 }
 
-func (c *config) Get(target string) (ConfigEntry, error) {
+// Get retrieves the target configuration. Throws an error if the target does not exist
+func (c *configStore) Get(target string) (ConfigEntry, error) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	tc, ok := c.config[target]
@@ -44,21 +47,24 @@ func (c *config) Get(target string) (ConfigEntry, error) {
 	return tc, nil
 }
 
-func (c *config) Add(target string) error {
+// Add creates a new empty ConfigEntry referenced under the given target
+func (c *configStore) Add(target string) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 	c.config[target] = NewConfigEntry()
 	return nil
 }
 
-func (c *config) Delete(target string) error {
+// Delete removes the config entry referenced vis the target string
+func (c *configStore) Delete(target string) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 	delete(c.config, target)
 	return nil
 }
 
-func (c *config) GetTargets() []string {
+// GetTargets retrieves a slice of available targets in the config map
+func (c *configStore) GetTargets() []string {
 	targets := []string{}
 	c.m.Lock()
 	defer c.m.Unlock()
