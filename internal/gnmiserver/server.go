@@ -49,7 +49,7 @@ func WithLogger(log logging.Logger) Option {
 	}
 }
 
-func WithConfig(c config.Config) Option {
+func WithConfig(c config.ConfigStore) Option {
 	return func(s GnmiServer) {
 		s.WithConfig(c)
 	}
@@ -64,7 +64,7 @@ func WithK8sClient(client client.Client) Option {
 type GnmiServer interface {
 	WithLogger(log logging.Logger)
 	WithK8sClient(client client.Client)
-	WithConfig(c config.Config)
+	WithConfig(c config.ConfigStore)
 	Start() error
 }
 
@@ -93,7 +93,7 @@ type gnmiServerImpl struct {
 	client         client.Client
 	newNetworkNode func() ndrv1.Nn
 	// config per target
-	config config.Config
+	config config.ConfigStore
 	// state collector
 	collector collector.Collector
 	// gnmi calls
@@ -129,7 +129,7 @@ func (s *gnmiServerImpl) WithLogger(log logging.Logger) {
 	s.log = log
 }
 
-func (s *gnmiServerImpl) WithConfig(c config.Config) {
+func (s *gnmiServerImpl) WithConfig(c config.ConfigStore) {
 	s.config = c
 }
 

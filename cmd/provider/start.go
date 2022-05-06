@@ -122,7 +122,7 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "unable to create webhook for state")
 		}
 
-		cfg := config.New()
+		cfg := config.NewConfigStore()
 
 		// initialize the gnmiserver
 		s := gnmiserver.New(
