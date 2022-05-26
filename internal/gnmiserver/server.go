@@ -23,9 +23,10 @@ import (
 
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/pkg/errors"
-	ndrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
+
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
+	targetv1 "github.com/yndd/ndd-target-runtime/apis/dvr/v1"
 	"github.com/yndd/nddp-state/internal/collector"
 	"github.com/yndd/nddp-state/internal/config"
 	"golang.org/x/sync/semaphore"
@@ -90,8 +91,8 @@ type gnmiServerImpl struct {
 	cfg *serverConfig
 
 	//k8s client
-	client         client.Client
-	newNetworkNode func() ndrv1.Nn
+	client    client.Client
+	newTarget func() targetv1.Tg
 	// config per target
 	config config.Config
 	// state collector
@@ -104,7 +105,7 @@ type gnmiServerImpl struct {
 }
 
 func New(ctx context.Context, opts ...Option) GnmiServer {
-	nn := func() ndrv1.Nn { return &ndrv1.NetworkNode{} }
+	nn := func() targetv1.Tg { return &targetv1.Target{} }
 	s := &gnmiServerImpl{
 		cfg: &serverConfig{
 			address:    ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
@@ -112,7 +113,7 @@ func New(ctx context.Context, opts ...Option) GnmiServer {
 			inSecure:   true,
 		},
 
-		newNetworkNode: nn,
+		newTarget: nn,
 	}
 
 	for _, opt := range opts {

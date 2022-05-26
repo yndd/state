@@ -25,9 +25,11 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
-	ndddvrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
+
+	// ndddvrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
 	"github.com/yndd/ndd-runtime/pkg/resource"
 	"github.com/yndd/ndd-runtime/pkg/utils"
+	"github.com/yndd/ndd-target-runtime/pkg/ygotnddtarget"
 	"github.com/yndd/ndd-yang/pkg/yparser"
 	"github.com/yndd/nddp-state/internal/validator"
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
@@ -187,22 +189,26 @@ func (s *gnmiServerImpl) getTarget(ctx context.Context, target string) (*gnmicty
 	if err != nil {
 		return nil, err
 	}
-	nn := s.newNetworkNode()
+	tg := s.newTarget()
 	if err := s.client.Get(ctx, types.NamespacedName{
 		Namespace: nsn[0],
 		Name:      nsn[1],
-	}, nn); err != nil {
+	}, tg); err != nil {
 		return nil, errors.Wrap(resource.IgnoreNotFound(err), errGetNetworkNode)
 	}
-
+	tspec, err := tg.GetSpec()
+	if err != nil {
+		return nil, err
+	}
 	// Retrieve the Login details from the network node spec and validate
 	// the network node details and build the credentials for communicating
 	// to the network node.
-	creds, err := s.validateCredentials(ctx, nn)
+	creds, err := s.validateCredentials(ctx, nsn[0], tspec)
 	if err != nil || creds == nil {
 		return nil, errors.Wrap(err, "credentials error")
 	}
-	tc := getTargetConfig(target, nn, creds)
+
+	tc := getTargetConfig(target, tspec, creds)
 	return tc, nil
 
 }
@@ -212,18 +218,17 @@ type Credentials struct {
 	Password string
 }
 
-func (s *gnmiServerImpl) validateCredentials(ctx context.Context, nn ndddvrv1.Nn) (creds *Credentials, err error) {
-	//log := r.log.WithValues("namespace", nn.GetNamespace(), "credentialsName", nn.GetTargetCredentialsName(), "targetAddress", nn.GetTargetAddress())
-	//log.Debug("Credentials Validation")
-	// Retrieve the secret from Kubernetes for this network node
-
-	credsSecret, err := s.getSecret(ctx, nn)
+func (s *gnmiServerImpl) validateCredentials(ctx context.Context, namespace string, tspec *ygotnddtarget.NddTarget_TargetEntry) (creds *Credentials, err error) {
+	if namespace == "" {
+		namespace = "default"
+	}
+	credsSecret, err := s.getSecret(ctx, namespace, tspec)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if address is defined on the network node
-	if nn.GetTargetAddress() == "" {
+	if *tspec.Config.Address == "" {
 		return nil, errors.New(errEmptyTargetAddress)
 	}
 
@@ -245,20 +250,19 @@ func (s *gnmiServerImpl) validateCredentials(ctx context.Context, nn ndddvrv1.Nn
 }
 
 // Retrieve the secret containing the credentials for talking to the Network Node.
-func (r *gnmiServerImpl) getSecret(ctx context.Context, nn ndddvrv1.Nn) (credsSecret *corev1.Secret, err error) {
-	// if namespace
+func (r *gnmiServerImpl) getSecret(ctx context.Context, namespace string, tspec *ygotnddtarget.NddTarget_TargetEntry) (credsSecret *corev1.Secret, err error) {
 	// check if credentialName is specified
-	if nn.GetTargetCredentialsName() == "" {
+
+	if tspec.GetConfig().CredentialName == nil || *tspec.GetConfig().CredentialName == "" {
 		return nil, errors.New(errEmptyTargetSecretReference)
 	}
-	namespace := nn.GetNamespace()
 	if namespace == "" {
 		namespace = "default"
 	}
 
 	// check if credential secret exists
 	secretKey := types.NamespacedName{
-		Name:      nn.GetTargetCredentialsName(),
+		Name:      *tspec.GetConfig().CredentialName,
 		Namespace: namespace,
 	}
 	credsSecret = &corev1.Secret{}
@@ -276,15 +280,15 @@ func getNamespaceNameFromTarget(target string) ([]string, error) {
 	return split, nil
 }
 
-func getTargetConfig(target string, nn ndddvrv1.Nn, creds *Credentials) *gnmictypes.TargetConfig {
+func getTargetConfig(target string, tspec *ygotnddtarget.NddTarget_TargetEntry, creds *Credentials) *gnmictypes.TargetConfig {
 	return &gnmictypes.TargetConfig{
 		Name:       target,
-		Address:    nn.GetTargetAddress(),
+		Address:    *tspec.Config.Address,
 		Username:   &creds.Username,
 		Password:   &creds.Password,
 		Timeout:    defaultTimeout,
-		Insecure:   utils.BoolPtr(nn.GetTargetInsecure()),
-		SkipVerify: utils.BoolPtr(nn.GetTargetSkipVerify()),
+		Insecure:   tspec.Config.Insecure,
+		SkipVerify: tspec.Config.SkipVerify,
 		TLSCA:      utils.StringPtr(""), //TODO TLS
 		TLSCert:    utils.StringPtr(""), //TODO TLS
 		TLSKey:     utils.StringPtr(""), //TODO TLS

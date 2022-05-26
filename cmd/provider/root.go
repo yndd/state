@@ -22,13 +22,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	targetv1 "github.com/yndd/ndd-target-runtime/apis/dvr/v1"
+	statev1alpha1 "github.com/yndd/nddp-state/apis/state/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	ndrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
-
-	statev1alpha1 "github.com/yndd/nddp-state/apis/state/v1alpha1"
 	//apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	//+kubebuilder:scaffold:imports
 )
@@ -64,7 +62,7 @@ func init() {
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(statev1alpha1.AddToScheme(scheme))
-	utilruntime.Must(ndrv1.AddToScheme(scheme))
+	utilruntime.Must(targetv1.AddToScheme(scheme))
 	//utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }

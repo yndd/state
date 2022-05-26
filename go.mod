@@ -11,17 +11,19 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.6.0
 	github.com/spf13/cobra v1.4.0
-	github.com/yndd/ndd-core v0.1.7
-	github.com/yndd/ndd-runtime v0.4.8
+	github.com/yndd/ndd-core v0.2.21-0.20220522110645-f0267f153e7e
+	github.com/yndd/ndd-runtime v0.5.8
 	github.com/yndd/ndd-yang v0.2.8
 	github.com/yndd/nddo-runtime v0.0.85
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.45.0
-	k8s.io/api v0.23.5
-	k8s.io/apimachinery v0.23.5
+	k8s.io/api v0.24.0
+	k8s.io/apimachinery v0.24.0
 	k8s.io/client-go v0.23.5
 	sigs.k8s.io/controller-runtime v0.11.2
 )
+
+require github.com/google/gnostic v0.5.7-v3refs // indirect
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
@@ -128,6 +130,7 @@ require (
 	github.com/ugorji/go/codec v1.2.6 // indirect
 	github.com/wI2L/jsondiff v0.1.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
+	github.com/yndd/ndd-target-runtime v0.0.51
 	github.com/zealic/xignore v0.3.3 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opencensus.io v0.23.0 // indirect
@@ -158,10 +161,10 @@ require (
 	inet.af/netaddr v0.0.0-20210903134321-85fa6c94624e // indirect
 	k8s.io/apiextensions-apiserver v0.23.5 // indirect
 	k8s.io/component-base v0.23.5 // indirect
-	k8s.io/klog/v2 v2.30.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	k8s.io/klog/v2 v2.60.1 // indirect
+	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
+	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

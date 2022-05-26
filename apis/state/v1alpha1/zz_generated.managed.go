@@ -37,9 +37,9 @@ func (mg *State) GetDeletionPolicy() nddv1.DeletionPolicy {
 	return mg.Spec.DeletionPolicy
 }
 
-// GetNetworkNodeReference of this State.
-func (mg *State) GetNetworkNodeReference() *nddv1.Reference {
-	return mg.Spec.NetworkNodeReference
+// GetTargetReference of this State.
+func (mg *State) GetTargetReference() *nddv1.Reference {
+	return mg.Spec.TargetReference
 }
 
 // SetRootPaths of this State.
@@ -67,9 +67,9 @@ func (mg *State) SetDeletionPolicy(r nddv1.DeletionPolicy) {
 	mg.Spec.DeletionPolicy = r
 }
 
-// SetNetworkNodeReference of this State.
-func (mg *State) SetNetworkNodeReference(r *nddv1.Reference) {
-	mg.Spec.NetworkNodeReference = r
+// SetTargetReference of this State.
+func (mg *State) SetTargetReference(r *nddv1.Reference) {
+	mg.Spec.TargetReference = r
 }
 
 // SetRootPaths of this State.

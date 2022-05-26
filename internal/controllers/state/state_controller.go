@@ -31,12 +31,12 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
-	ndrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
 	"github.com/yndd/ndd-runtime/pkg/event"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/reconciler/managedgeneric"
 	"github.com/yndd/ndd-runtime/pkg/resource"
 	"github.com/yndd/ndd-runtime/pkg/utils"
+	targetv1 "github.com/yndd/ndd-target-runtime/apis/dvr/v1"
 	"github.com/yndd/ndd-yang/pkg/yparser"
 	statev1alpha1 "github.com/yndd/nddp-state/apis/state/v1alpha1"
 	"github.com/yndd/nddp-state/internal/model"
@@ -44,7 +44,6 @@ import (
 	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,7 +77,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControlle
 		managedgeneric.WithExternalConnecter(&connectorDevice{
 			log:         nddcopts.Logger,
 			kube:        mgr.GetClient(),
-			usage:       resource.NewNetworkNodeUsageTracker(mgr.GetClient(), &ndrv1.NetworkNodeUsage{}),
+			usage:       resource.NewTargetUsageTracker(mgr.GetClient(), &targetv1.TargetUsage{}),
 			m:           m,
 			fm:          fm,
 			newClientFn: target.NewTarget,
@@ -93,7 +92,6 @@ func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControlle
 		ctx:    context.Background(),
 	}
 
-	//return ctrl.NewControllerManagedBy(mgr).
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
@@ -133,17 +131,17 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 	}
 
 	// find network node that is configured status
-	nn := &ndrv1.NetworkNode{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetNetworkNodeReference().Name}, nn); err != nil {
+	nn := &targetv1.Target{}
+	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetTargetReference().Name}, nn); err != nil {
 		return nil, errors.Wrap(err, errGetNetworkNode)
 	}
 
-	if nn.GetCondition(ndrv1.ConditionKindDeviceDriverConfigured).Status != corev1.ConditionTrue {
-		return nil, errors.New(targetNotConfigured)
-	}
+	// if nn.GetCondition(ndrv1.ConditionKindDeviceDriverConfigured).Status != corev1.ConditionTrue {
+	// 	return nil, errors.New(targetNotConfigured)
+	// }
 
 	cfg := &gnmitypes.TargetConfig{
-		Name:       cr.GetNetworkNodeReference().Name,
+		Name:       cr.GetTargetReference().Name,
 		Address:    c.gnmiAddress,
 		Username:   utils.StringPtr("admin"),
 		Password:   utils.StringPtr("admin"),
@@ -190,7 +188,7 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 		return managedgeneric.ExternalObservation{}, err
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetNetworkNodeReference().Name}, ".")
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
 
 	req := &gnmi.GetRequest{
 		Prefix:   &gnmi.Path{Target: crTarget},
@@ -279,7 +277,7 @@ func (e *externalDevice) Create(ctx context.Context, mg resource.Managed) error 
 		return errors.Wrap(err, errCreateResource)
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetNetworkNodeReference().Name}, ".")
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
 
 	req := &gnmi.SetRequest{
 		Prefix:  &gnmi.Path{Target: crTarget},
@@ -303,7 +301,7 @@ func (e *externalDevice) Delete(ctx context.Context, mg resource.Managed) error 
 		return errors.Wrap(err, errDeleteResource)
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetNetworkNodeReference().Name}, ".")
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
 
 	req := &gnmi.SetRequest{
 		Prefix: &gnmi.Path{Target: crTarget},
