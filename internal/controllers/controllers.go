@@ -18,19 +18,18 @@ package controllers
 
 import (
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	//"github.com/yndd/ndda-network/internal/controllers/network"
-	"github.com/yndd/state/internal/controllers/state"
 	"github.com/yndd/ndd-runtime/pkg/shared"
+	"github.com/yndd/state/internal/controllers/state"
 )
 
 // Setup package controllers.
-func Setup(mgr ctrl.Manager, option controller.Options, nddcopts *shared.NddControllerOptions) error {
-	for _, setup := range []func(ctrl.Manager, controller.Options, *shared.NddControllerOptions) error{
+func Setup(mgr ctrl.Manager, nddcopts *shared.NddControllerOptions) error {
+	for _, setup := range []func(ctrl.Manager, *shared.NddControllerOptions) error{
 		state.Setup,
 	} {
-		if err := setup(mgr, option, nddcopts); err != nil {
+		if err := setup(mgr, nddcopts); err != nil {
 			return err
 		}
 	}

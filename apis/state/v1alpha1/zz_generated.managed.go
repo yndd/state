@@ -23,61 +23,55 @@ package v1alpha1
 import nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
 
 // GetActive of this State.
-func (mg *State) GetDeploymentPolicy() nddv1.DeploymentPolicy {
-	return mg.Spec.DeploymentPolicy
+func (x *State) GetDeploymentPolicy() nddv1.DeploymentPolicy {
+	return x.Spec.Lifecycle.DeploymentPolicy
 }
 
 // GetCondition of this State.
-func (mg *State) GetCondition(ck nddv1.ConditionKind) nddv1.Condition {
-	return mg.Status.GetCondition(ck)
+func (x *State) GetCondition(ck nddv1.ConditionKind) nddv1.Condition {
+	return x.Status.GetCondition(ck)
 }
 
 // GetDeletionPolicy of this State.
-func (mg *State) GetDeletionPolicy() nddv1.DeletionPolicy {
-	return mg.Spec.DeletionPolicy
+func (x *State) GetDeletionPolicy() nddv1.DeletionPolicy {
+	return x.Spec.Lifecycle.DeletionPolicy
 }
 
 // GetTargetReference of this State.
-func (mg *State) GetTargetReference() *nddv1.Reference {
-	return mg.Spec.TargetReference
+func (x *State) GetTargetReference() *nddv1.Reference {
+	return x.Spec.TargetReference
 }
 
 // SetRootPaths of this State.
-func (mg *State) GetRootPaths() []string {
-	return mg.Status.RootPaths
-}
-
-// SetHierPaths of this State.
-func (mg *State) GetHierPaths() map[string][]string {
-	return mg.Status.HierPaths
+func (x *State) GetRootPaths() []string {
+	return x.Status.RootPaths
 }
 
 // SetActive of this State.
-func (mg *State) SetDeploymentPolicy(b nddv1.DeploymentPolicy) {
-	mg.Spec.DeploymentPolicy = b
+func (x *State) SetDeploymentPolicy(b nddv1.DeploymentPolicy) {
+	x.Spec.Lifecycle.DeploymentPolicy = b
 }
 
 // SetConditions of this State.
-func (mg *State) SetConditions(c ...nddv1.Condition) {
-	mg.Status.SetConditions(c...)
+func (x *State) SetConditions(c ...nddv1.Condition) {
+	x.Status.SetConditions(c...)
 }
 
 // SetDeletionPolicy of this State.
-func (mg *State) SetDeletionPolicy(r nddv1.DeletionPolicy) {
-	mg.Spec.DeletionPolicy = r
+func (x *State) SetDeletionPolicy(r nddv1.DeletionPolicy) {
+	x.Spec.Lifecycle.DeletionPolicy = r
 }
 
 // SetTargetReference of this State.
-func (mg *State) SetTargetReference(r *nddv1.Reference) {
-	mg.Spec.TargetReference = r
+func (x *State) SetTargetReference(r *nddv1.Reference) {
+	x.Spec.TargetReference = r
 }
 
 // SetRootPaths of this State.
-func (mg *State) SetRootPaths(n []string) {
-	mg.Status.RootPaths = n
+func (x *State) SetRootPaths(n []string) {
+	x.Status.RootPaths = n
 }
 
-// SetHierPaths of this State.
-func (mg *State) SetHierPaths(n map[string][]string) {
-	mg.Status.HierPaths = n
+func (x *State) SetHealthConditions(c nddv1.HealthConditionedStatus) {
+	x.Status.Health = c
 }

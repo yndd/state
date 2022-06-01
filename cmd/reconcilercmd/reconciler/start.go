@@ -29,18 +29,18 @@ import (
 	"github.com/spf13/cobra"
 
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
+	"github.com/yndd/state/internal/config"
+	"github.com/yndd/state/internal/controllers"
+	"github.com/yndd/state/internal/gnmiserver"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
 	"github.com/yndd/ndd-runtime/pkg/shared"
 	"github.com/yndd/reconciler-controller/pkg/reconcilercontroller"
 	"github.com/yndd/registrator/registrator"
-	"github.com/yndd/state/internal/controllers/state"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -56,7 +56,7 @@ var (
 	grpcQueryAddress          string
 	autoPilot                 bool
 	serviceDiscovery          string
-	serviceDiscoveryNamespace string 
+	serviceDiscoveryNamespace string
 	serviceDiscoveryDcName    string
 )
 
@@ -125,22 +125,29 @@ var startCmd = &cobra.Command{
 		}
 
 		// initialize controllers
-		_, _, err = state.Setup(mgr, &shared.NddControllerOptions{
+		if err := controllers.Setup(mgr, &shared.NddControllerOptions{
 			Logger:    logging.NewLogrLogger(zlog.WithName("state")),
 			Poll:      pollInterval,
 			Namespace: namespace,
-			Copts: controller.Options{
-				MaxConcurrentReconciles: concurrency,
-				RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),
-			},
-		})
-		if err != nil {
+			//GnmiAddress: gnmiAddress,
+		}); err != nil {
 			return errors.Wrap(err, "Cannot add ndd controllers to manager")
 		}
 
-		if err = (&srlv1alpha1.SrlConfig{}).SetupWebhookWithManager(mgr); err != nil {
-			return errors.Wrap(err, "unable to create webhook for srl config")
+		// initialize the gnmiserver
+		s := gnmiserver.New(
+			cmd.Context(),
+			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
+			gnmiserver.WithConfig(config.New()),
+			gnmiserver.WithK8sClient(mgr.GetClient()),
+		)
+		if err := s.Start(); err != nil {
+			return errors.Wrap(err, "Cannot start gnmi server")
 		}
+
+		//if err = (&statev1alpha1.State{}).SetupWebhookWithManager(mgr); err != nil {
+		//	return errors.Wrap(err, "unable to create webhook for srl config")
+		//}
 
 		// +kubebuilder:scaffold:builder
 

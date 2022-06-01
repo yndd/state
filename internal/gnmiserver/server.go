@@ -26,7 +26,6 @@ import (
 
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	targetv1 "github.com/yndd/target/apis/target/v1"
 	"github.com/yndd/state/internal/collector"
 	"github.com/yndd/state/internal/config"
 	"golang.org/x/sync/semaphore"
@@ -91,8 +90,8 @@ type gnmiServerImpl struct {
 	cfg *serverConfig
 
 	//k8s client
-	client    client.Client
-	newTarget func() targetv1.Tg
+	client client.Client
+	//newTarget func() targetv1.Tg
 	// config per target
 	config config.Config
 	// state collector

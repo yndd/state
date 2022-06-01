@@ -38,10 +38,10 @@ import (
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
+	"github.com/yndd/ndd-runtime/pkg/shared"
 	"github.com/yndd/state/internal/config"
 	"github.com/yndd/state/internal/controllers"
 	"github.com/yndd/state/internal/gnmiserver"
-	"github.com/yndd/ndd-runtime/pkg/shared"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -105,25 +105,21 @@ var startCmd = &cobra.Command{
 
 		zlog.Info("gnmi address", "address", gnmiAddress)
 
-		nddcopts := &shared.NddControllerOptions{
+		// initialize controllers
+		if err := controllers.Setup(mgr, &shared.NddControllerOptions{
 			Logger:      logging.NewLogrLogger(zlog.WithName("state")),
 			Poll:        pollInterval,
 			Namespace:   namespace,
 			GnmiAddress: gnmiAddress,
-		}
-
-		// initialize controllers
-		if err := controllers.Setup(mgr, nddCtlrOptions(concurrency), nddcopts); err != nil {
+		}); err != nil {
 			return errors.Wrap(err, "Cannot add ndd controllers to manager")
 		}
-
-		cfg := config.New()
 
 		// initialize the gnmiserver
 		s := gnmiserver.New(
 			cmd.Context(),
 			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			gnmiserver.WithConfig(cfg),
+			gnmiserver.WithConfig(config.New()),
 			gnmiserver.WithK8sClient(mgr.GetClient()),
 		)
 		if err := s.Start(); err != nil {

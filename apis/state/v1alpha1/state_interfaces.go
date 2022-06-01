@@ -17,12 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
 	nddov1 "github.com/yndd/nddo-runtime/apis/common/v1"
-	"github.com/yndd/nddo-runtime/pkg/resource"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+/*
 var _ IFStateList = &StateList{}
 
 // +k8s:deepcopy-gen=false
@@ -72,6 +70,7 @@ type IFState interface {
 	// Spec
 	GetSpec() *StateSpec
 }
+*/
 
 func (x *State) GetOwner() string {
 	if s, ok := x.GetLabels()[nddov1.LabelNddaOwner]; !ok {
