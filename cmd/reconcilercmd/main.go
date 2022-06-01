@@ -14,16 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package main
 
-import (
-	"k8s.io/apimachinery/pkg/util/validation/field"
-)
+import "github.com/yndd/state/cmd/reconcilercmd/reconciler"
 
-func ValidateSpec(spec []byte) *field.Error {
-	if _, err := m.NewConfigStruct(spec, false); err != nil {
-		return field.Invalid(field.NewPath("spec"), string(spec), err.Error())
-	}
-
-	return nil
+func main() {
+	reconciler.Execute()
 }

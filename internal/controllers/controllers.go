@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	//"github.com/yndd/ndda-network/internal/controllers/network"
-	"github.com/yndd/nddp-state/internal/controllers/state"
-	"github.com/yndd/nddp-state/internal/shared"
+	"github.com/yndd/state/internal/controllers/state"
+	"github.com/yndd/ndd-runtime/pkg/shared"
 )
 
 // Setup package controllers.

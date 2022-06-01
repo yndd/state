@@ -5,8 +5,8 @@ import (
 
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
-	"github.com/yndd/nddp-state/internal/model"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	"github.com/yndd/state/internal/model"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 
 type ConfigEntry interface {

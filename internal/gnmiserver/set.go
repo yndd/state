@@ -18,25 +18,19 @@ package gnmiserver
 
 import (
 	"context"
-	"strings"
 	"time"
 
-	gnmictypes "github.com/karimra/gnmic/types"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
 
 	// ndddvrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
-	"github.com/yndd/ndd-runtime/pkg/resource"
-	"github.com/yndd/ndd-runtime/pkg/utils"
-	"github.com/yndd/ndd-target-runtime/pkg/ygotnddtarget"
+
 	"github.com/yndd/ndd-yang/pkg/yparser"
-	"github.com/yndd/nddp-state/internal/validator"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	"github.com/yndd/state/internal/validator"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -162,11 +156,7 @@ func (s *gnmiServerImpl) handleSet(ctx context.Context, target string) error {
 		}
 		return nil
 	}
-	// states exists, we need to restart the collector with the new subscription
-	tc, err := s.getTarget(ctx, target)
-	if err != nil {
-		return err
-	}
+
 	if s.collector.IsActive(target) {
 		log.Debug("handleSet", "Active", true)
 		if err := s.collector.StopTarget(target); err != nil {
@@ -182,116 +172,4 @@ func (s *gnmiServerImpl) handleSet(ctx context.Context, target string) error {
 	}
 	log.Debug("handleSet", "Start success", true)
 	return nil
-}
-
-func (s *gnmiServerImpl) getTarget(ctx context.Context, target string) (*gnmictypes.TargetConfig, error) {
-	nsn, err := getNamespaceNameFromTarget(target)
-	if err != nil {
-		return nil, err
-	}
-	tg := s.newTarget()
-	if err := s.client.Get(ctx, types.NamespacedName{
-		Namespace: nsn[0],
-		Name:      nsn[1],
-	}, tg); err != nil {
-		return nil, errors.Wrap(resource.IgnoreNotFound(err), errGetNetworkNode)
-	}
-	tspec, err := tg.GetSpec()
-	if err != nil {
-		return nil, err
-	}
-	// Retrieve the Login details from the network node spec and validate
-	// the network node details and build the credentials for communicating
-	// to the network node.
-	creds, err := s.validateCredentials(ctx, nsn[0], tspec)
-	if err != nil || creds == nil {
-		return nil, errors.Wrap(err, "credentials error")
-	}
-
-	tc := getTargetConfig(target, tspec, creds)
-	return tc, nil
-
-}
-
-type Credentials struct {
-	Username string
-	Password string
-}
-
-func (s *gnmiServerImpl) validateCredentials(ctx context.Context, namespace string, tspec *ygotnddtarget.NddTarget_TargetEntry) (creds *Credentials, err error) {
-	if namespace == "" {
-		namespace = "default"
-	}
-	credsSecret, err := s.getSecret(ctx, namespace, tspec)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if address is defined on the network node
-	if *tspec.Config.Address == "" {
-		return nil, errors.New(errEmptyTargetAddress)
-	}
-
-	creds = &Credentials{
-		Username: strings.TrimSuffix(string(credsSecret.Data["username"]), "\n"),
-		Password: strings.TrimSuffix(string(credsSecret.Data["password"]), "\n"),
-	}
-
-	//log.Debug("Credentials", "creds", creds)
-
-	if creds.Username == "" {
-		return nil, errors.New(errMissingUsername)
-	}
-	if creds.Password == "" {
-		return nil, errors.New(errMissingPassword)
-	}
-
-	return creds, nil
-}
-
-// Retrieve the secret containing the credentials for talking to the Network Node.
-func (r *gnmiServerImpl) getSecret(ctx context.Context, namespace string, tspec *ygotnddtarget.NddTarget_TargetEntry) (credsSecret *corev1.Secret, err error) {
-	// check if credentialName is specified
-
-	if tspec.GetConfig().CredentialName == nil || *tspec.GetConfig().CredentialName == "" {
-		return nil, errors.New(errEmptyTargetSecretReference)
-	}
-	if namespace == "" {
-		namespace = "default"
-	}
-
-	// check if credential secret exists
-	secretKey := types.NamespacedName{
-		Name:      *tspec.GetConfig().CredentialName,
-		Namespace: namespace,
-	}
-	credsSecret = &corev1.Secret{}
-	if err := r.client.Get(ctx, secretKey, credsSecret); resource.IgnoreNotFound(err) != nil {
-		return nil, errors.Wrap(err, errCredentialSecretDoesNotExist)
-	}
-	return credsSecret, nil
-}
-
-func getNamespaceNameFromTarget(target string) ([]string, error) {
-	split := strings.Split(target, ".")
-	if len(split) != 2 {
-		return nil, errors.New("wrong target input")
-	}
-	return split, nil
-}
-
-func getTargetConfig(target string, tspec *ygotnddtarget.NddTarget_TargetEntry, creds *Credentials) *gnmictypes.TargetConfig {
-	return &gnmictypes.TargetConfig{
-		Name:       target,
-		Address:    *tspec.Config.Address,
-		Username:   &creds.Username,
-		Password:   &creds.Password,
-		Timeout:    defaultTimeout,
-		Insecure:   tspec.Config.Insecure,
-		SkipVerify: tspec.Config.SkipVerify,
-		TLSCA:      utils.StringPtr(""), //TODO TLS
-		TLSCert:    utils.StringPtr(""), //TODO TLS
-		TLSKey:     utils.StringPtr(""), //TODO TLS
-		Gzip:       utils.BoolPtr(false),
-	}
 }

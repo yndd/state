@@ -18,7 +18,7 @@ package state
 
 const (
 	errTrackTCUsage     = "cannot track TargetConfig usage"
-	errGetNetworkNode   = "cannot get NetworkNode"
+	errGetTarget        = "cannot get Target"
 	targetNotConfigured = "target is not configured to proceed"
 	errNewClient        = "cannot create new client"
 	errJSONMarshal      = "cannot marshal JSON object"

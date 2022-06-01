@@ -22,7 +22,7 @@ import (
 	gapi "github.com/karimra/gnmic/api"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/yndd/ndd-yang/pkg/yparser"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 
 // Subscription defines the parameters for the subscription

@@ -26,9 +26,9 @@ import (
 
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	targetv1 "github.com/yndd/ndd-target-runtime/apis/dvr/v1"
-	"github.com/yndd/nddp-state/internal/collector"
-	"github.com/yndd/nddp-state/internal/config"
+	targetv1 "github.com/yndd/target/apis/target/v1"
+	"github.com/yndd/state/internal/collector"
+	"github.com/yndd/state/internal/config"
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,7 +105,7 @@ type gnmiServerImpl struct {
 }
 
 func New(ctx context.Context, opts ...Option) GnmiServer {
-	nn := func() targetv1.Tg { return &targetv1.Target{} }
+	//nn := func() targetv1.Tg { return &targetv1.Target{} }
 	s := &gnmiServerImpl{
 		cfg: &serverConfig{
 			address:    ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
@@ -113,7 +113,7 @@ func New(ctx context.Context, opts ...Option) GnmiServer {
 			inSecure:   true,
 		},
 
-		newTarget: nn,
+		//newTarget: nn,
 	}
 
 	for _, opt := range opts {

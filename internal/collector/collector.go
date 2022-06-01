@@ -6,7 +6,7 @@ import (
 
 	"github.com/karimra/gnmic/types"
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 
 // Option can be used to manipulate Collector config.

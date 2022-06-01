@@ -16,7 +16,7 @@ limitations under the License.
 
 package main
 
-import "github.com/yndd/nddp-state/cmd/provider"
+import "github.com/yndd/state/cmd/provider"
 
 func main() {
 	provider.Execute()

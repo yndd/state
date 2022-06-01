@@ -2,7 +2,7 @@
 apiVersion: meta.pkg.ndd.yndd.io/v1
 kind: Provider
 metadata:
-  name: nddp-state
+  name: state
 spec:
   controller:
     image: yndd/nddp-state-controller:latest

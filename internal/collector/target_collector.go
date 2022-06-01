@@ -26,7 +26,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 	"google.golang.org/grpc"
 )
 

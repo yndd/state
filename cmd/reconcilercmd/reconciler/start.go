@@ -14,12 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package reconciler
 
 import (
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"net/http"
@@ -29,40 +28,43 @@ import (
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 
+	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
-	"github.com/yndd/state/internal/config"
-	"github.com/yndd/state/internal/controllers"
-	"github.com/yndd/state/internal/gnmiserver"
 	"github.com/yndd/ndd-runtime/pkg/shared"
+	"github.com/yndd/reconciler-controller/pkg/reconcilercontroller"
+	"github.com/yndd/registrator/registrator"
+	"github.com/yndd/state/internal/controllers/state"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	metricsAddr          string
-	probeAddr            string
-	enableLeaderElection bool
-	concurrency          int
-	pollInterval         time.Duration
-	namespace            string
-	podname              string
-	grpcServerAddress    string
-	grpcQueryAddress     string
-	autoPilot            bool
+	metricsAddr               string
+	probeAddr                 string
+	enableLeaderElection      bool
+	concurrency               int
+	pollInterval              time.Duration
+	namespace                 string
+	podname                   string
+	grpcServerAddress         string
+	grpcQueryAddress          string
+	autoPilot                 bool
+	serviceDiscovery          string
+	serviceDiscoveryNamespace string 
+	serviceDiscoveryDcName    string
 )
 
 // startCmd represents the start command for the network device driver
 var startCmd = &cobra.Command{
 	Use:          "start",
-	Short:        "start the state ndd provider manager",
-	Long:         "start the state ndd provider manager",
+	Short:        "start state reconciler",
+	Long:         "start state reconciler",
 	Aliases:      []string{"start"},
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -71,12 +73,39 @@ var startCmd = &cobra.Command{
 			// Only use a logr.Logger when debug is on
 			ctrl.SetLogger(zlog)
 		}
+		logger := logging.NewLogrLogger(zlog.WithName("reconciler"))
 
 		if profiler {
 			defer profile.Start().Stop()
 			go func() {
 				http.ListenAndServe(":8000", nil)
 			}()
+		}
+
+		// create a service discovery registrator
+		reg, err := registrator.New(cmd.Context(), ctrl.GetConfigOrDie(), &registrator.Options{
+			Logger:                    logger,
+			Scheme:                    scheme,
+			ServiceDiscoveryDcName:    serviceDiscoveryDcName,
+			ServiceDiscovery:          pkgmetav1.ServiceDiscoveryType(serviceDiscovery),
+			ServiceDiscoveryNamespace: serviceDiscoveryNamespace,
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot create registrator")
+		}
+
+		// create a reconciler controller
+		rc, err := reconcilercontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &reconcilercontroller.Options{
+			Logger:            logger,
+			GrpcServerAddress: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
+			Registrator:       reg,
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot create reconciler controller")
+		}
+		// start the reconciler controller
+		if err := rc.Start(); err != nil {
+			return errors.Wrap(err, "Cannot start reconciler controller")
 		}
 
 		zlog.Info("create manager")
@@ -92,42 +121,25 @@ var startCmd = &cobra.Command{
 			LeaderElectionID:       "c66ce353.ndd.yndd.io",
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot create manager")
-		}
-
-		// assign gnmi address
-		var gnmiAddress string
-		if grpcQueryAddress != "" {
-			gnmiAddress = grpcQueryAddress
-		} else {
-			gnmiAddress = strings.Join([]string{"127.0.0.1", strconv.Itoa(pkgmetav1.GnmiServerPort)}, ":")
-		}
-
-		zlog.Info("gnmi address", "address", gnmiAddress)
-
-		nddcopts := &shared.NddControllerOptions{
-			Logger:      logging.NewLogrLogger(zlog.WithName("state")),
-			Poll:        pollInterval,
-			Namespace:   namespace,
-			GnmiAddress: gnmiAddress,
+			return errors.Wrap(err, "Cannot add srlconfig manager")
 		}
 
 		// initialize controllers
-		if err := controllers.Setup(mgr, nddCtlrOptions(concurrency), nddcopts); err != nil {
+		_, _, err = state.Setup(mgr, &shared.NddControllerOptions{
+			Logger:    logging.NewLogrLogger(zlog.WithName("state")),
+			Poll:      pollInterval,
+			Namespace: namespace,
+			Copts: controller.Options{
+				MaxConcurrentReconciles: concurrency,
+				RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),
+			},
+		})
+		if err != nil {
 			return errors.Wrap(err, "Cannot add ndd controllers to manager")
 		}
 
-		cfg := config.New()
-
-		// initialize the gnmiserver
-		s := gnmiserver.New(
-			cmd.Context(),
-			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			gnmiserver.WithConfig(cfg),
-			gnmiserver.WithK8sClient(mgr.GetClient()),
-		)
-		if err := s.Start(); err != nil {
-			return errors.Wrap(err, "Cannot start gnmi server")
+		if err = (&srlv1alpha1.SrlConfig{}).SetupWebhookWithManager(mgr); err != nil {
+			return errors.Wrap(err, "unable to create webhook for srl config")
 		}
 
 		// +kubebuilder:scaffold:builder
@@ -143,6 +155,9 @@ var startCmd = &cobra.Command{
 		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 			return errors.Wrap(err, "problem running manager")
 		}
+
+		// TODO setup event channel for config changes
+
 		return nil
 	},
 }
@@ -159,13 +174,7 @@ func init() {
 	startCmd.Flags().StringVarP(&podname, "podname", "", os.Getenv("POD_NAME"), "Name from the pod")
 	startCmd.Flags().StringVarP(&grpcServerAddress, "grpc-server-address", "s", "", "The address of the grpc server binds to.")
 	startCmd.Flags().StringVarP(&grpcQueryAddress, "grpc-query-address", "", "", "Validation query address.")
-	startCmd.Flags().BoolVarP(&autoPilot, "autopilot", "a", true,
-		"Apply delta/diff changes to the config automatically when set to true, if set to false the provider will report the delta and the operator should intervene what to do with the delta/diffs")
-}
-
-func nddCtlrOptions(c int) controller.Options {
-	return controller.Options{
-		MaxConcurrentReconciles: c,
-		RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),
-	}
+	startCmd.Flags().StringVarP(&serviceDiscovery, "service-discovery", "", os.Getenv("SERVICE_DISCOVERY"), "the service discovery kind used in this deployment")
+	startCmd.Flags().StringVarP(&serviceDiscoveryNamespace, "service-discovery-namespace", "", os.Getenv("SERVICE_DISCOVERY_NAMESPACE"), "the namespace used for service discovery")
+	startCmd.Flags().StringVarP(&serviceDiscoveryDcName, "service-discovery-dc-name", "", os.Getenv("SERVICE_DISCOVERY_DCNAME"), "The dc name used in service discovery")
 }

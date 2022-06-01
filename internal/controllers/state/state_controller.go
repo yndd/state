@@ -31,31 +31,30 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
+	"github.com/yndd/ndd-runtime/pkg/shared"
 	"github.com/yndd/ndd-runtime/pkg/event"
 	"github.com/yndd/ndd-runtime/pkg/logging"
-	"github.com/yndd/ndd-runtime/pkg/reconciler/managedgeneric"
+	"github.com/yndd/observability-runtime/pkg/reconciler/managed"
 	"github.com/yndd/ndd-runtime/pkg/resource"
 	"github.com/yndd/ndd-runtime/pkg/utils"
-	targetv1 "github.com/yndd/ndd-target-runtime/apis/dvr/v1"
 	"github.com/yndd/ndd-yang/pkg/yparser"
-	statev1alpha1 "github.com/yndd/nddp-state/apis/state/v1alpha1"
-	"github.com/yndd/nddp-state/internal/model"
-	"github.com/yndd/nddp-state/internal/shared"
-	"github.com/yndd/nddp-state/pkg/ygotnddpstate"
+	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
+	"github.com/yndd/state/internal/model"
+	"github.com/yndd/state/pkg/ygotnddpstate"
+	targetv1 "github.com/yndd/target/apis/target/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // SetupDevice adds a controller that reconciles Devices.
-func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControllerOptions) error {
+func Setup(mgr ctrl.Manager, nddcopts *shared.NddControllerOptions) error {
 	//func SetupDevice(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControllerOptions) error {
 
-	name := managedgeneric.ControllerName(statev1alpha1.StateGroupKind)
+	name := managed.ControllerName(statev1alpha1.StateGroupKind)
 
 	fm := &model.Model{
 		StructRootType:  reflect.TypeOf((*ygotnddpstate.Device)(nil)),
@@ -71,10 +70,10 @@ func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControlle
 		EnumData:        ygotnddpstate.ΛEnum,
 	}
 
-	r := managedgeneric.NewReconciler(mgr,
+	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(statev1alpha1.StateGroupVersionKind),
-		managedgeneric.WithPollInterval(nddcopts.Poll),
-		managedgeneric.WithExternalConnecter(&connectorDevice{
+		managed.WithPollInterval(nddcopts.Poll),
+		managed.WithExternalConnecter(&connectorDevice{
 			log:         nddcopts.Logger,
 			kube:        mgr.GetClient(),
 			usage:       resource.NewTargetUsageTracker(mgr.GetClient(), &targetv1.TargetUsage{}),
@@ -83,8 +82,8 @@ func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControlle
 			newClientFn: target.NewTarget,
 			gnmiAddress: nddcopts.GnmiAddress},
 		),
-		managedgeneric.WithLogger(nddcopts.Logger.WithValues("State", name)),
-		managedgeneric.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
+		managed.WithLogger(nddcopts.Logger.WithValues("State", name)),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	StateHandler := &EnqueueRequestForAllState{
 		client: mgr.GetClient(),
@@ -94,7 +93,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControlle
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(nddcopts.Copts).
 		For(&statev1alpha1.State{}).
 		Owns(&statev1alpha1.State{}).
 		WithEventFilter(resource.IgnoreUpdateWithoutGenerationChangePredicate()).
@@ -118,7 +117,7 @@ type connectorDevice struct {
 // 1. Tracking that the managed resource is using a NetworkNode.
 // 2. Getting the managed resource's NetworkNode with connection details
 // A resource is mapped to a single target
-func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (managedgeneric.ExternalClient, error) {
+func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	log := c.log.WithValues("resource", mg.GetName())
 	//log.Debug("Connect")
 
@@ -133,7 +132,7 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 	// find network node that is configured status
 	nn := &targetv1.Target{}
 	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetTargetReference().Name}, nn); err != nil {
-		return nil, errors.Wrap(err, errGetNetworkNode)
+		return nil, errors.Wrap(err, errGetTarget)
 	}
 
 	// if nn.GetCondition(ndrv1.ConditionKindDeviceDriverConfigured).Status != corev1.ConditionTrue {
@@ -179,13 +178,13 @@ func (e *externalDevice) Close() {
 	e.client.Close()
 }
 
-func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (managedgeneric.ExternalObservation, error) {
+func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	log := e.log.WithValues("Resource", mg.GetName())
 	log.Debug("Observing ...")
 
 	stateEntry, err := e.getSpec(mg)
 	if err != nil {
-		return managedgeneric.ExternalObservation{}, err
+		return managed.ExternalObservation{}, err
 	}
 
 	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
@@ -204,46 +203,46 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 			switch er.Code() {
 			case codes.Unavailable:
 				// we use this to signal not ready
-				return managedgeneric.ExternalObservation{}, nil
+				return managed.ExternalObservation{}, nil
 			case codes.NotFound:
-				return managedgeneric.ExternalObservation{}, nil
+				return managed.ExternalObservation{}, nil
 			}
 		}
 	}
 
 	var cacheState interface{}
 	if len(resp.GetNotification()) == 0 {
-		return managedgeneric.ExternalObservation{}, nil
+		return managed.ExternalObservation{}, nil
 	}
 	if len(resp.GetNotification()) != 0 && len(resp.GetNotification()[0].GetUpdate()) != 0 {
 		// get value from gnmi get response
 		cacheState, err = yparser.GetValue(resp.GetNotification()[0].GetUpdate()[0].Val)
 		if err != nil {
-			return managedgeneric.ExternalObservation{}, errors.Wrap(err, errJSONMarshal)
+			return managed.ExternalObservation{}, errors.Wrap(err, errJSONMarshal)
 		}
 
 		switch cacheState.(type) {
 		case nil:
 			// resource has no data
-			return managedgeneric.ExternalObservation{}, nil
+			return managed.ExternalObservation{}, nil
 		}
 	}
 
 	cacheStateData, err := json.Marshal(cacheState)
 	if err != nil {
-		return managedgeneric.ExternalObservation{}, err
+		return managed.ExternalObservation{}, err
 	}
 	log.Debug("Observing ...", "cacheStateData", string(cacheStateData))
 
 	// validate the state cache as a validtedGoStruct
 	validatedGoStruct, err := e.fm.NewConfigStruct(cacheStateData, true)
 	if err != nil {
-		return managedgeneric.ExternalObservation{}, err
+		return managed.ExternalObservation{}, err
 	}
 	// type casting
 	cacheNddpStateDevice, ok := validatedGoStruct.(*ygotnddpstate.Device)
 	if !ok {
-		return managedgeneric.ExternalObservation{}, errors.New("wrong nddp state object")
+		return managed.ExternalObservation{}, errors.New("wrong nddp state object")
 	}
 
 	log.Debug("Observing ...", "cacheNddpStateDevice", cacheNddpStateDevice)
@@ -251,7 +250,7 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 	// check if the entry exists
 	cacheStateEntry, ok := cacheNddpStateDevice.StateEntry[*stateEntry.Name]
 	if !ok {
-		return managedgeneric.ExternalObservation{}, nil
+		return managed.ExternalObservation{}, nil
 	}
 
 	log.Debug("Observing ...", "cacheStateEntry", cacheStateEntry)
@@ -259,10 +258,10 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 	// check if the cacheData is aligned with the crSpecData
 	deletes, updates, err := e.diff(mg, cacheStateEntry)
 	if err != nil {
-		return managedgeneric.ExternalObservation{}, err
+		return managed.ExternalObservation{}, err
 	}
 
-	return managedgeneric.ExternalObservation{
+	return managed.ExternalObservation{
 		Exists:     true,
 		IsUpToDate: len(deletes) == 0 && len(updates) == 0,
 	}, nil
