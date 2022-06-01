@@ -27,7 +27,7 @@ import (
 	// ndddvrv1 "github.com/yndd/ndd-core/apis/dvr/v1"
 
 	"github.com/yndd/ndd-yang/pkg/yparser"
-	"github.com/yndd/state/internal/validator"
+	"github.com/yndd/target/pkg/validator"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

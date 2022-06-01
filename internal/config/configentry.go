@@ -5,7 +5,7 @@ import (
 
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
-	"github.com/yndd/state/internal/model"
+	"github.com/yndd/ndd-runtime/pkg/model"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 

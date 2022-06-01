@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package worker
 
 import (
 	"os"
 
 	"github.com/spf13/cobra"
 
-	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
-	targetv1 "github.com/yndd/target/apis/target/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+	//srlv1alpha1 "github.com/yndd/state/apis/srl/v1alpha1"
+	targetv1 "github.com/yndd/target/apis/target/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -38,7 +39,7 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "manager",
-	Short: "state reconciler",
+	Short: "srl config worker",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 	},
 }
@@ -57,7 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&profiler, "profiler", "", false, "enable profiling")
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(statev1alpha1.AddToScheme(scheme))
+	//utilruntime.Must(srlv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(targetv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -31,6 +32,8 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
+	pkgv1 "github.com/yndd/ndd-core/apis/pkg/v1"
+	nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
 	"github.com/yndd/ndd-runtime/pkg/event"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/resource"
@@ -38,12 +41,14 @@ import (
 	"github.com/yndd/ndd-runtime/pkg/utils"
 	"github.com/yndd/ndd-yang/pkg/yparser"
 	"github.com/yndd/observability-runtime/pkg/reconciler/managed"
+	"github.com/yndd/registrator/registrator"
 	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
-	"github.com/yndd/state/internal/model"
+	"github.com/yndd/ndd-runtime/pkg/model"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 	targetv1 "github.com/yndd/target/apis/target/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +56,7 @@ import (
 )
 
 // SetupDevice adds a controller that reconciles Devices.
-func Setup(mgr ctrl.Manager, nddcopts *shared.NddControllerOptions) error {
+func Setup(mgr ctrl.Manager, nddopts *shared.NddControllerOptions) error {
 	//func SetupDevice(mgr ctrl.Manager, o controller.Options, nddcopts *shared.NddControllerOptions) error {
 
 	name := managed.ControllerName(statev1alpha1.StateGroupKind)
@@ -72,28 +77,28 @@ func Setup(mgr ctrl.Manager, nddcopts *shared.NddControllerOptions) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(statev1alpha1.StateGroupVersionKind),
-		managed.WithPollInterval(nddcopts.Poll),
+		managed.WithPollInterval(nddopts.Poll),
 		managed.WithExternalConnecter(&connectorDevice{
-			log:         nddcopts.Logger,
+			log:         nddopts.Logger,
 			kube:        mgr.GetClient(),
 			usage:       resource.NewTargetUsageTracker(mgr.GetClient(), &targetv1.TargetUsage{}),
 			m:           m,
 			fm:          fm,
 			newClientFn: target.NewTarget,
-			gnmiAddress: nddcopts.GnmiAddress},
-		),
-		managed.WithLogger(nddcopts.Logger.WithValues("State", name)),
+			registrator: nddopts.Registrator,
+		}),
+		managed.WithLogger(nddopts.Logger.WithValues("State", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	StateHandler := &EnqueueRequestForAllState{
 		client: mgr.GetClient(),
-		log:    nddcopts.Logger,
+		log:    nddopts.Logger,
 		ctx:    context.Background(),
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(nddcopts.Copts).
+		WithOptions(nddopts.Copts).
 		For(&statev1alpha1.State{}).
 		Owns(&statev1alpha1.State{}).
 		WithEventFilter(resource.IgnoreUpdateWithoutGenerationChangePredicate()).
@@ -110,7 +115,7 @@ type connectorDevice struct {
 	m           *model.Model
 	fm          *model.Model
 	newClientFn func(c *gnmitypes.TargetConfig) *target.Target
-	gnmiAddress string
+	registrator registrator.Registrator
 }
 
 // Connect produces an ExternalClient by:
@@ -130,27 +135,35 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 	}
 
 	// find network node that is configured status
-	nn := &targetv1.Target{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetTargetReference().Name}, nn); err != nil {
+	t := &targetv1.Target{}
+	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetTargetReference().Name}, t); err != nil {
 		return nil, errors.Wrap(err, errGetTarget)
 	}
 
-	// if nn.GetCondition(ndrv1.ConditionKindDeviceDriverConfigured).Status != corev1.ConditionTrue {
-	// 	return nil, errors.New(targetNotConfigured)
-	// }
+	if t.GetCondition(nddv1.ConditionKindReady).Status != corev1.ConditionTrue {
+		return nil, errors.New(targetNotConfigured)
+	}
+
+	// TODO check ServiceDiscovery and decide to use the address or dns resolution
+	address, err := c.registrator.GetEndpointAddress(ctx,
+		os.Getenv("SERVICE_NAME"),
+		pkgv1.GetTargetTag(t.GetNamespace(), t.GetName()))
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get query from registrator")
+	}
 
 	cfg := &gnmitypes.TargetConfig{
-		Name:       cr.GetTargetReference().Name,
-		Address:    c.gnmiAddress,
-		Username:   utils.StringPtr("admin"),
-		Password:   utils.StringPtr("admin"),
+		Name:    cr.GetTargetReference().Name,
+		Address: address,
+		//Username:   utils.StringPtr("admin"),
+		//Password:   utils.StringPtr("admin"),
 		Timeout:    10 * time.Second,
 		SkipVerify: utils.BoolPtr(true),
-		Insecure:   utils.BoolPtr(true),
-		TLSCA:      utils.StringPtr(""), //TODO TLS
-		TLSCert:    utils.StringPtr(""), //TODO TLS
-		TLSKey:     utils.StringPtr(""),
-		Gzip:       utils.BoolPtr(false),
+		//Insecure:   utils.BoolPtr(true),
+		TLSCA:   utils.StringPtr(""), //TODO TLS
+		TLSCert: utils.StringPtr(""), //TODO TLS
+		TLSKey:  utils.StringPtr(""),
+		Gzip:    utils.BoolPtr(false),
 	}
 
 	cl := target.NewTarget(cfg)
@@ -158,9 +171,8 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	tns := []string{nn.GetName()}
+	tns := []string{t.GetName()}
 
-	//return &externalDevice{client: cl, targets: tns, log: log, deviceSchema: c.deviceSchema, nddpSchema: c.nddpSchema, deviceModel: c.deviceModel, systemModel: c.systemModel}, nil
 	return &externalDevice{client: cl, targets: tns, log: log, m: c.m, fm: c.fm}, nil
 }
 

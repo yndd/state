@@ -1,0 +1,167 @@
+/*
+Copyright 2021 NDD.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package observabilitycontroller
+
+// TargetController defines the interfaces for the target controller
+type TargetController interface {
+	// start the target controller
+	Start() error
+	// stop the target controller
+	Stop() error
+	// GetTargetChannel
+	GetTargetChannel() chan targetchannel.TargetMsg
+}
+
+type Options struct {
+	Logger            logging.Logger
+	GrpcServerAddress string
+	Registrator       registrator.Registrator
+	TargetRegistry    target.TargetRegistry // only needed for config since the model is unique per target
+	TargetModel       *model.Model          // only needed for config since the mode is unique per target
+}
+
+// targetControllerImpl implements the TargetController interface
+type targetControllerImpl struct {
+	options           *Options
+	m                 sync.RWMutex
+	targets           map[string]TargetInstance
+	cache             cache.Cache
+	grpcServerAddress string
+
+	// channels
+	targetCh chan targetchannel.TargetMsg
+	stopCh   chan bool
+
+	// kubernetes
+	client   resource.ClientApplicator
+	eventChs map[string]chan event.GenericEvent
+	// server
+	server grpcserver.GrpcServer
+	// registrator
+	registrator registrator.Registrator
+
+	ctx context.Context
+	cfn context.CancelFunc
+	log logging.Logger
+}
+
+func New(ctx context.Context, config *rest.Config, o *Options) (TargetController, error) {
+	log := o.Logger
+	log.Debug("new target controller")
+
+	c := &targetControllerImpl{
+		log:               o.Logger,
+		options:           o,
+		m:                 sync.RWMutex{},
+		targets:           make(map[string]TargetInstance),
+		targetCh:          make(chan targetchannel.TargetMsg),
+		stopCh:            make(chan bool),
+		registrator:       o.Registrator,
+		grpcServerAddress: o.GrpcServerAddress,
+		ctx:               ctx,
+		cache:             cache.New(),
+	}
+
+	return c, nil
+}
+
+func (c *targetControllerImpl) GetTargetChannel() chan targetchannel.TargetMsg {
+	return c.targetCh
+}
+
+func (c *targetControllerImpl) Stop() error {
+	c.log.Debug("stopping  deviceDriver...")
+
+	close(c.stopCh)
+	return nil
+}
+
+func (c *targetControllerImpl) Start() error {
+	c.log.Debug("starting targetdriver...")
+
+	// start grpc server
+	c.server = grpcserver.New(c.grpcServerAddress,
+		grpcserver.WithHealth(true),
+		grpcserver.WithGnmi(true),
+		grpcserver.WithCache(c.cache),
+		grpcserver.WithLogger(c.log),
+		grpcserver.WithTargetChannel(c.targetCh),
+	)
+	if err := c.server.Start(); err != nil {
+		return err
+	}
+
+	// register the service
+	c.registrator.Register(c.ctx, &registrator.Service{
+		Name:    os.Getenv("SERVICE_NAME"),
+		ID:      os.Getenv("POD_NAME"),
+		Port:    pkgmetav1.GnmiServerPort,
+		Address: os.Getenv("POD_IP"),
+		//Address:    strings.Join([]string{os.Getenv("POD_NAME"), os.Getenv("GRPC_SVC_NAME"), os.Getenv("POD_NAMESPACE"), "svc", "cluster", "local"}, "."),
+		Tags:         pkgv1.GetServiceTag(os.Getenv("POD_NAMESPACE"), os.Getenv("POD_NAME")),
+		HealthChecks: []registrator.HealthKind{registrator.HealthKindTTL, registrator.HealthKindGRPC},
+	})
+
+	// start target handler, which enables crud operations for targets
+	// create, delete requests
+	go c.startTargetWorker(c.ctx)
+
+	return nil
+}
+
+func (c *targetControllerImpl) startTargetWorker(ctx context.Context) {
+	c.log.Debug("Starting targetChangeHandler...")
+
+	for {
+		select {
+		case <-ctx.Done():
+			c.log.Debug("target controller worker stopped", "error", ctx.Err())
+			return
+		case <-c.stopCh:
+			c.log.Debug("target controller worker stopped")
+			return
+		case t := <-c.targetCh:
+			log := c.log.WithValues("targetFullName", t.Target)
+			switch t.Operation {
+			case targetchannel.Start:
+				if err := c.startTarget(t.Target); err != nil {
+					log.Debug("target init/start failed", "error", err)
+
+					// delete the context since it is not ok to connect to the device
+					if err := c.DeleteTargetInstance(t.Target); err != nil {
+						log.Debug("target delete failed", "error", err)
+					}
+				} else {
+					log.Debug("target init/start success")
+				}
+			case targetchannel.Stop:
+				// stop the target and delete the target from the targetlist
+				if err := c.stopTarget(t.Target); err != nil {
+					log.Debug("target stop failed", "error", err)
+					if err := c.DeleteTargetInstance(t.Target); err != nil {
+						log.Debug("target delete failed", "error", err)
+					}
+				} else {
+					c.log.Debug("target stop success")
+					if err := c.DeleteTargetInstance(t.Target); err != nil {
+						c.log.Debug("target delete failed", "error", err)
+					}
+				}
+			}
+		}
+	}
+}

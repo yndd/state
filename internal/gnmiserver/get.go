@@ -29,7 +29,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"github.com/openconfig/ygot/ytypes"
 	"github.com/yndd/ndd-yang/pkg/yparser"
-	"github.com/yndd/state/internal/model"
+	"github.com/yndd/ndd-runtime/pkg/model"
 
 	//systemv1alpha1 "github.com/yndd/nddp-system/apis/system/v1alpha1"
 

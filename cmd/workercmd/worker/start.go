@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package worker
 
 import (
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -27,21 +28,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
+	"github.com/yndd/ndd-runtime/pkg/model"
+	"github.com/yndd/registrator/registrator"
 
+	itarget "github.com/yndd/state/internal/controllers/target"
+	"github.com/yndd/state/internal/target/state"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
-	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
-	"github.com/yndd/state/internal/controllers"
+	"github.com/yndd/ndd-runtime/pkg/logging"
+	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
+	"github.com/yndd/ndd-runtime/pkg/shared"
+	targetv1 "github.com/yndd/target/apis/target/v1"
+	"github.com/yndd/target/pkg/target"
+	"github.com/yndd/target/pkg/targetcontroller"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	"github.com/yndd/ndd-runtime/pkg/logging"
-	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
-	"github.com/yndd/ndd-runtime/pkg/shared"
-	"github.com/yndd/reconciler-controller/pkg/reconcilercontroller"
-	"github.com/yndd/registrator/registrator"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -56,16 +59,16 @@ var (
 	grpcServerAddress         string
 	grpcQueryAddress          string
 	autoPilot                 bool
-	serviceDiscovery          string
-	serviceDiscoveryNamespace string
 	serviceDiscoveryDcName    string
+	serviceDiscovery          string
+	serviceDiscoveryNamespace string // todo initialization
 )
 
 // startCmd represents the start command for the network device driver
 var startCmd = &cobra.Command{
 	Use:          "start",
-	Short:        "start state reconciler",
-	Long:         "start state reconciler",
+	Short:        "start state worker",
+	Long:         "start state worker",
 	Aliases:      []string{"start"},
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +77,7 @@ var startCmd = &cobra.Command{
 			// Only use a logr.Logger when debug is on
 			ctrl.SetLogger(zlog)
 		}
-		logger := logging.NewLogrLogger(zlog.WithName("reconciler"))
+		logger := logging.NewLogrLogger(zlog.WithName("worker"))
 
 		if profiler {
 			defer profile.Start().Stop()
@@ -95,39 +98,49 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "Cannot create registrator")
 		}
 
-		// create a reconciler controller
-		rc, err := reconcilercontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &reconcilercontroller.Options{
+		// initialize the target registry and register the vendor type
+		tr := target.NewTargetRegistry()
+		tr.RegisterInitializer(targetv1.VendorTypeNokiaSRL, func() target.Target {
+			return srl.New()
+		})
+		// inittialize the target controller
+		tc, err := targetcontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &targetcontroller.Options{
 			Logger:            logger,
-			GrpcServerAddress: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
 			Registrator:       reg,
+			GrpcServerAddress: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
+			TargetRegistry:    tr,
+			TargetModel: &model.Model{
+				StructRootType:  reflect.TypeOf((*ygotsrl.Device)(nil)),
+				SchemaTreeRoot:  ygotsrl.SchemaTree["Device"],
+				JsonUnmarshaler: ygotsrl.Unmarshal,
+				EnumData:        ygotsrl.ΛEnum,
+			},
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot create reconciler controller")
+			return errors.Wrap(err, "Cannot create target controller")
 		}
-		// start the reconciler controller
-		if err := rc.Start(); err != nil {
-			return errors.Wrap(err, "Cannot start reconciler controller")
+		if err := tc.Start(); err != nil {
+			return errors.Wrap(err, "Cannot start target controller")
 		}
+
+		// +kubebuilder:scaffold:builder
 
 		zlog.Info("create manager")
 		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-			Scheme:             scheme,
-			MetricsBindAddress: metricsAddr,
-			WebhookServer: &webhook.Server{
-				Port: 9443,
-			},
+			Scheme:                 scheme,
+			MetricsBindAddress:     metricsAddr,
 			Port:                   7443,
 			HealthProbeBindAddress: probeAddr,
 			LeaderElection:         enableLeaderElection,
 			LeaderElectionID:       "c66ce353.ndd.yndd.io",
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot add srlconfig manager")
+			return errors.Wrap(err, "Cannot create manager")
 		}
 
 		// initialize controllers
-		if err := controllers.Setup(mgr, &shared.NddControllerOptions{
-			Logger:    logging.NewLogrLogger(zlog.WithName("state")),
+		if err = itarget.Setup(mgr, &shared.NddControllerOptions{
+			Logger:    logger,
 			Poll:      pollInterval,
 			Namespace: namespace,
 			Copts: controller.Options{
@@ -135,11 +148,7 @@ var startCmd = &cobra.Command{
 				RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),
 			},
 		}); err != nil {
-			return errors.Wrap(err, "Cannot add ndd controllers to manager")
-		}
-
-		if err = (&statev1alpha1.State{}).SetupWebhookWithManager(mgr); err != nil {
-			return errors.Wrap(err, "unable to create webhook for srl config")
+			return errors.Wrap(err, "Cannot add target to manager")
 		}
 
 		// +kubebuilder:scaffold:builder
@@ -157,6 +166,7 @@ var startCmd = &cobra.Command{
 		}
 
 		return nil
+
 	},
 }
 
@@ -172,6 +182,8 @@ func init() {
 	startCmd.Flags().StringVarP(&podname, "podname", "", os.Getenv("POD_NAME"), "Name from the pod")
 	startCmd.Flags().StringVarP(&grpcServerAddress, "grpc-server-address", "s", "", "The address of the grpc server binds to.")
 	startCmd.Flags().StringVarP(&grpcQueryAddress, "grpc-query-address", "", "", "Validation query address.")
+	startCmd.Flags().BoolVarP(&autoPilot, "autopilot", "a", true,
+		"Apply delta/diff changes to the config automatically when set to true, if set to false the provider will report the delta and the operator should intervene what to do with the delta/diffs")
 	startCmd.Flags().StringVarP(&serviceDiscovery, "service-discovery", "", os.Getenv("SERVICE_DISCOVERY"), "the service discovery kind used in this deployment")
 	startCmd.Flags().StringVarP(&serviceDiscoveryNamespace, "service-discovery-namespace", "", os.Getenv("SERVICE_DISCOVERY_NAMESPACE"), "the namespace used for service discovery")
 	startCmd.Flags().StringVarP(&serviceDiscoveryDcName, "service-discovery-dc-name", "", os.Getenv("SERVICE_DISCOVERY_DCNAME"), "The dc name used in service discovery")

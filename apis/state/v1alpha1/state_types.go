@@ -70,8 +70,8 @@ func init() {
 
 // State type metadata.
 var (
-	StateKindKind         = reflect.TypeOf(State{}).Name()
-	StateGroupKind        = schema.GroupKind{Group: Group, Kind: StateKindKind}.String()
-	StateKindAPIVersion   = StateKindKind + "." + GroupVersion.String()
-	StateGroupVersionKind = GroupVersion.WithKind(StateKindKind)
+	StateKind         = reflect.TypeOf(State{}).Name()
+	StateGroupKind        = schema.GroupKind{Group: Group, Kind: StateKind}.String()
+	StateKindAPIVersion   = StateKind + "." + GroupVersion.String()
+	StateGroupVersionKind = GroupVersion.WithKind(StateKind)
 )
