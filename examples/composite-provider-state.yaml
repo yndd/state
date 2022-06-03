@@ -1,0 +1,15 @@
+apiVersion: pkg.ndd.yndd.io/v1
+kind: CompositeProvider
+metadata:
+  name: state
+  namespace: ndd-system
+spec:
+  packages:
+  - name: reconciler
+    kind: reconciler
+    package: yndd/state-reconciler:latest
+    packagePullPolicy: Always
+  - name: worker
+    kind: worker
+    package: yndd/state-worker:latest
+    packagePullPolicy: Always

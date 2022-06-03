@@ -39,9 +39,7 @@ import (
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
 	"github.com/yndd/ndd-runtime/pkg/shared"
-	"github.com/yndd/state/internal/config"
 	"github.com/yndd/state/internal/controllers"
-	"github.com/yndd/state/internal/gnmiserver"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -116,15 +114,7 @@ var startCmd = &cobra.Command{
 		}
 
 		// initialize the gnmiserver
-		s := gnmiserver.New(
-			cmd.Context(),
-			gnmiserver.WithLogger(logging.NewLogrLogger(zlog.WithName("gnmi server"))),
-			gnmiserver.WithConfig(config.New()),
-			gnmiserver.WithK8sClient(mgr.GetClient()),
-		)
-		if err := s.Start(); err != nil {
-			return errors.Wrap(err, "Cannot start gnmi server")
-		}
+		// REMOVED
 
 		// +kubebuilder:scaffold:builder
 

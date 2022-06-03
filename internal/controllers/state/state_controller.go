@@ -32,6 +32,7 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
+	"github.com/yndd/cache/pkg/model"
 	pkgv1 "github.com/yndd/ndd-core/apis/pkg/v1"
 	nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
 	"github.com/yndd/ndd-runtime/pkg/event"
@@ -43,7 +44,6 @@ import (
 	"github.com/yndd/observability-runtime/pkg/reconciler/managed"
 	"github.com/yndd/registrator/registrator"
 	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
-	"github.com/yndd/ndd-runtime/pkg/model"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 	targetv1 "github.com/yndd/target/apis/target/v1"
 	"google.golang.org/grpc/codes"
@@ -62,17 +62,17 @@ func Setup(mgr ctrl.Manager, nddopts *shared.NddControllerOptions) error {
 	name := managed.ControllerName(statev1alpha1.StateGroupKind)
 
 	fm := &model.Model{
-		StructRootType:  reflect.TypeOf((*ygotnddpstate.Device)(nil)),
-		SchemaTreeRoot:  ygotnddpstate.SchemaTree["Device"],
-		JsonUnmarshaler: ygotnddpstate.Unmarshal,
-		EnumData:        ygotnddpstate.ΛEnum,
+		StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
+		SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
+		//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+		//EnumData:        ygotnddpstate.ΛEnum,
 	}
 
 	m := &model.Model{
-		StructRootType:  reflect.TypeOf((*ygotnddpstate.NddpState_StateEntry)(nil)),
-		SchemaTreeRoot:  ygotnddpstate.SchemaTree["NddpState_StateEntry"],
-		JsonUnmarshaler: ygotnddpstate.Unmarshal,
-		EnumData:        ygotnddpstate.ΛEnum,
+		StructRootType: reflect.TypeOf((*ygotnddpstate.YnddState_StateEntry)(nil)),
+		SchemaTreeRoot: ygotnddpstate.SchemaTree["NddpState_StateEntry"],
+		//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+		//EnumData:        ygotnddpstate.ΛEnum,
 	}
 
 	r := managed.NewReconciler(mgr,
@@ -384,12 +384,12 @@ func (e *externalDevice) getValidatedGoStructFromCr(mg resource.Managed) (ygot.V
 }
 
 // getSpec return the spec as a stateEntry
-func (e *externalDevice) getSpec(mg resource.Managed) (*ygotnddpstate.NddpState_StateEntry, error) {
+func (e *externalDevice) getSpec(mg resource.Managed) (*ygotnddpstate.YnddState_StateEntry, error) {
 	validatedGoStruct, err := e.getValidatedGoStructFromCr(mg)
 	if err != nil {
 		return nil, err
 	}
-	stateEntry, ok := validatedGoStruct.(*ygotnddpstate.NddpState_StateEntry)
+	stateEntry, ok := validatedGoStruct.(*ygotnddpstate.YnddState_StateEntry)
 	if !ok {
 		return nil, errors.New("wrong object nddp state entry")
 	}

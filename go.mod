@@ -5,28 +5,29 @@ go 1.17
 require (
 	github.com/karimra/gnmic v0.24.4
 	github.com/nats-io/nats.go v1.14.0
-	github.com/openconfig/gnmi v0.0.0-20220131173555-39aa74195f0d
+	github.com/openconfig/gnmi v0.0.0-20220503232738-6eb133c65a13
 	github.com/openconfig/goyang v1.0.0
-	github.com/openconfig/ygot v0.17.0
+	github.com/openconfig/ygot v0.22.1
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.6.0
 	github.com/spf13/cobra v1.4.0
+	github.com/yndd/cache v0.0.5
+	github.com/yndd/grpchandlers v0.0.2
+	github.com/yndd/grpcserver v0.0.2
 	github.com/yndd/ndd-core v0.2.21
-	github.com/yndd/ndd-runtime v0.5.15
+	github.com/yndd/ndd-runtime v0.5.18
 	github.com/yndd/ndd-yang v0.2.8
 	github.com/yndd/nddo-runtime v0.0.85
 	github.com/yndd/observability-runtime v0.0.1
-	github.com/yndd/reconciler-controller v0.0.13
+	github.com/yndd/reconciler-controller v0.0.15
 	github.com/yndd/registrator v0.0.19
-	github.com/yndd/target v0.0.56
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	google.golang.org/grpc v1.46.0
+	github.com/yndd/target v0.0.74
+	google.golang.org/grpc v1.47.0
+	k8s.io/api v0.24.1
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.24.0
-	sigs.k8s.io/controller-runtime v0.12.0
+	sigs.k8s.io/controller-runtime v0.12.1
 )
-
-require github.com/google/gnostic v0.5.7-v3refs // indirect
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
@@ -76,6 +77,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -114,9 +116,11 @@ require (
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/matryer/is v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/miekg/dns v1.1.47 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
@@ -133,6 +137,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	github.com/rs/zerolog v1.25.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
@@ -142,8 +147,7 @@ require (
 	github.com/ugorji/go/codec v1.2.6 // indirect
 	github.com/wI2L/jsondiff v0.1.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
-	github.com/yndd/ndd-target-runtime v0.0.46 // indirect
-	github.com/yndd/nddp-system v0.2.4 // indirect
+	github.com/yndd/nddp-system v0.2.5 // indirect
 	github.com/zealic/xignore v0.3.3 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opencensus.io v0.23.0 // indirect
@@ -156,10 +160,12 @@ require (
 	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70 // indirect
 	golang.org/x/net v0.0.0-20220516155154-20f960328961 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
+	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29 // indirect
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/api v0.75.0 // indirect
@@ -172,7 +178,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	inet.af/netaddr v0.0.0-20210903134321-85fa6c94624e // indirect
-	k8s.io/api v0.24.1 // indirect
 	k8s.io/apiextensions-apiserver v0.24.0 // indirect
 	k8s.io/component-base v0.24.0 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect

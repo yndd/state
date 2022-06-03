@@ -2,10 +2,14 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/karimra/gnmic/types"
+	"github.com/yndd/cache/pkg/cache"
+	"github.com/yndd/cache/pkg/origin"
 	"github.com/yndd/ndd-runtime/pkg/logging"
+	"github.com/yndd/ndd-runtime/pkg/meta"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 
@@ -15,10 +19,12 @@ type Option func(Collector)
 type Collector interface {
 	// add a logger to Collector
 	WithLogger(log logging.Logger)
+	// add a cache to Collector
+	WithCache(c cache.Cache)
 	// check if a target exists
 	IsActive(target string) bool
 	// start target collector
-	StartTarget(t *types.TargetConfig, mc *ygotnddpstate.Device) error
+	ReconcileTarget(tc *types.TargetConfig) error
 	// stop target collector
 	StopTarget(target string) error
 	// stop all target collectors
@@ -29,6 +35,13 @@ type Collector interface {
 func WithLogger(log logging.Logger) Option {
 	return func(d Collector) {
 		d.WithLogger(log)
+	}
+}
+
+// WithLogger specifies how the collector logs messages.
+func WithCache(c cache.Cache) Option {
+	return func(d Collector) {
+		d.WithCache(c)
 	}
 }
 
@@ -45,6 +58,7 @@ type collector struct {
 	m sync.Mutex
 	// state collectors indexed by target name
 	targetCollectors map[string]TargetCollector
+	cache            cache.Cache
 	ctx              context.Context
 	cfn              context.CancelFunc
 	natsAddr         string
@@ -70,6 +84,10 @@ func (c *collector) WithLogger(log logging.Logger) {
 	c.log = log
 }
 
+func (c *collector) WithCache(cache cache.Cache) {
+	c.cache = cache
+}
+
 func (c *collector) IsActive(target string) bool {
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -77,11 +95,47 @@ func (c *collector) IsActive(target string) bool {
 	return ok
 }
 
-func (c *collector) StartTarget(tc *types.TargetConfig, mc *ygotnddpstate.Device) error {
-	c.m.Lock()
-	defer c.m.Unlock()
+func (c *collector) ReconcileTarget(tc *types.TargetConfig) error {
+	log := c.log.WithValues("target", tc.Name)
+	cacheNsTargetName := meta.NamespacedName(tc.Name).GetPrefixNamespacedName(origin.State)
+
+	ce, err := c.cache.GetEntry(cacheNsTargetName)
+	if err != nil {
+		log.Debug("cache not ready", "error", err)
+		// we dont return an error as this can happen
+		return nil
+	}
+	runningConfig, ok := ce.GetRunningConfig().(*ygotnddpstate.Device)
+	if !ok {
+		return errors.New("unexpected Object")
+	}
+	// validate if there are still state entries in the config, if not we should delete the target
+	if len(runningConfig.StateEntry) == 0 {
+		if c.IsActive(tc.Name) {
+			err = c.StopTarget(tc.Name)
+			if err != nil {
+				return err
+			}
+		}
+		if err := c.cache.DeleteEntry(tc.Name); err != nil {
+			return err
+		}
+		log.Debug("handleUpdate No state config left")
+		return nil
+	}
+
+	if c.IsActive(tc.Name) {
+		log.Debug("handleSet", "Active", true)
+		if err := c.StopTarget(tc.Name); err != nil {
+			log.Debug("handleSet", "Stop success", false)
+			return err
+		}
+		c.log.Debug("handleSet", "Stop success", true)
+	}
+	log.Debug("handleUpdate with running config", "runningConfig", runningConfig)
+
 	// create a new target collector
-	tColl, err := NewTargetCollector(c.ctx, tc, mc,
+	tColl, err := NewTargetCollector(c.ctx, tc, runningConfig,
 		WithTargetCollectorLogger(c.log),
 		WithTargetCollectorNATSAddr(c.natsAddr),
 	)
@@ -89,6 +143,8 @@ func (c *collector) StartTarget(tc *types.TargetConfig, mc *ygotnddpstate.Device
 		return err
 	}
 
+	c.m.Lock()
+	defer c.m.Unlock()
 	c.targetCollectors[tc.Name] = tColl
 	if err := tColl.Start(c.ctx); err != nil {
 		return err

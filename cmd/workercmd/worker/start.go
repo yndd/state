@@ -28,18 +28,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
-	"github.com/yndd/ndd-runtime/pkg/model"
+	"github.com/yndd/grpcserver"
 	"github.com/yndd/registrator/registrator"
 
-	itarget "github.com/yndd/state/internal/controllers/target"
-	"github.com/yndd/state/internal/target/state"
-	"github.com/yndd/state/pkg/ygotnddpstate"
+	"github.com/yndd/cache/pkg/cache"
+	"github.com/yndd/cache/pkg/model"
+	"github.com/yndd/cache/pkg/origin"
+	"github.com/yndd/grpchandlers/pkg/healthhandler"
 	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/ratelimiter"
 	"github.com/yndd/ndd-runtime/pkg/shared"
-	targetv1 "github.com/yndd/target/apis/target/v1"
-	"github.com/yndd/target/pkg/target"
+	"github.com/yndd/state/internal/collector"
+	itarget "github.com/yndd/state/internal/controllers/target"
+	"github.com/yndd/state/internal/stategnmihandler"
+	"github.com/yndd/state/internal/statetargetcontroller"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 	"github.com/yndd/target/pkg/targetcontroller"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -86,45 +90,9 @@ var startCmd = &cobra.Command{
 			}()
 		}
 
-		// create a service discovery registrator
-		reg, err := registrator.New(cmd.Context(), ctrl.GetConfigOrDie(), &registrator.Options{
-			Logger:                    logger,
-			Scheme:                    scheme,
-			ServiceDiscoveryDcName:    serviceDiscoveryDcName,
-			ServiceDiscovery:          pkgmetav1.ServiceDiscoveryType(serviceDiscovery),
-			ServiceDiscoveryNamespace: serviceDiscoveryNamespace,
-		})
-		if err != nil {
-			return errors.Wrap(err, "Cannot create registrator")
-		}
-
-		// initialize the target registry and register the vendor type
-		tr := target.NewTargetRegistry()
-		tr.RegisterInitializer(targetv1.VendorTypeNokiaSRL, func() target.Target {
-			return srl.New()
-		})
-		// inittialize the target controller
-		tc, err := targetcontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &targetcontroller.Options{
-			Logger:            logger,
-			Registrator:       reg,
-			GrpcServerAddress: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
-			TargetRegistry:    tr,
-			TargetModel: &model.Model{
-				StructRootType:  reflect.TypeOf((*ygotsrl.Device)(nil)),
-				SchemaTreeRoot:  ygotsrl.SchemaTree["Device"],
-				JsonUnmarshaler: ygotsrl.Unmarshal,
-				EnumData:        ygotsrl.ΛEnum,
-			},
-		})
-		if err != nil {
-			return errors.Wrap(err, "Cannot create target controller")
-		}
-		if err := tc.Start(); err != nil {
-			return errors.Wrap(err, "Cannot start target controller")
-		}
-
 		// +kubebuilder:scaffold:builder
 
+		// handles target updates from the k8s api server
 		zlog.Info("create manager")
 		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:                 scheme,
@@ -138,11 +106,95 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "Cannot create manager")
 		}
 
+		// create a service discovery registrator
+		reg, err := registrator.New(cmd.Context(), ctrl.GetConfigOrDie(), &registrator.Options{
+			Logger:                    logger,
+			Scheme:                    scheme,
+			ServiceDiscoveryDcName:    serviceDiscoveryDcName,
+			ServiceDiscovery:          pkgmetav1.ServiceDiscoveryType(serviceDiscovery),
+			ServiceDiscoveryNamespace: serviceDiscoveryNamespace,
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot create registrator")
+		}
+
+		// initialize the cache
+		c := cache.New()
+
+		// initialaize the colllector
+		col := collector.New(cmd.Context(),
+			collector.WithLogger(logger),
+		)
+
+		// create a state target controller for creataing/deleting targets
+		// initializes/delete the cache with the target model
+		// start/stop target in the collector
+		stc := statetargetcontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &statetargetcontroller.Options{
+			Logger:      logger,
+			Registrator: reg,
+			Collector:   col,
+			Cache:       c,
+			TargetModel: &model.Model{
+				StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
+				SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
+				//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+				//EnumData:        ygotnddpstate.ΛEnum,
+			},
+		})
+
+		// initialize the state gnmi handler with both the state target controller and the collector
+		// statetargetcontroller is used to get targetconfig
+		// collector is used to start/stop collector if the config changes
+		ssc := stategnmihandler.New(&stategnmihandler.Options{
+			Logger:                logger,
+			Cache:                 c,
+			StateTargetController: stc,
+			Collector:             col,
+		})
+
+		// handles the health with the service discovery
+		ssw := healthhandler.New(&healthhandler.Options{
+			Logger: logger,
+		})
+
+		// grpc server is used to handle get/set from the reconciler
+		s := grpcserver.New(grpcserver.Config{
+			Address: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
+			GNMI:    true,
+			Health:  true,
+		},
+			grpcserver.WithLogger(logger),
+			grpcserver.WithClient(mgr.GetClient()),
+			grpcserver.WithGetHandler(origin.State, ssc.Get),
+			grpcserver.WithSetUpdateHandler(origin.State, ssc.Set),
+			grpcserver.WithSetReplaceHandler(origin.State, ssc.Set),
+			grpcserver.WithSetDeleteHandler(origin.State, ssc.Delete),
+			grpcserver.WithWatchHandler(ssw.Watch),
+			grpcserver.WithCheckHandler(ssw.Check),
+		)
+
+		// inittialize the target controller
+		// with grpc server
+		// with registrator for the service discvery
+		tc := targetcontroller.New(cmd.Context(), &targetcontroller.Options{
+			Logger:      logger,
+			GrpcServer:  s,
+			Registrator: reg,
+			Cache:       c,
+		},
+			targetcontroller.SetStartTargetHandler(stc.StartTarget),
+			targetcontroller.SetStopTargetHandler(stc.StopTarget),
+		)
+		if err := tc.Start(); err != nil {
+			return errors.Wrap(err, "Cannot start target controller")
+		}
+
 		// initialize controllers
 		if err = itarget.Setup(mgr, &shared.NddControllerOptions{
 			Logger:    logger,
 			Poll:      pollInterval,
 			Namespace: namespace,
+			TargetCh:  tc.GetTargetChannel(),
 			Copts: controller.Options{
 				MaxConcurrentReconciles: concurrency,
 				RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),

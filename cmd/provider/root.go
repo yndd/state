@@ -22,8 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	targetv1 "github.com/yndd/target/apis/target/v1"
 	statev1alpha1 "github.com/yndd/state/apis/state/v1alpha1"
+	targetv1 "github.com/yndd/target/apis/target/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

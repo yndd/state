@@ -20,8 +20,8 @@ import (
 	"reflect"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/yndd/cache/pkg/model"
 	"github.com/yndd/state/pkg/ygotnddpstate"
-	"github.com/yndd/ndd-runtime/pkg/model"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,11 +34,11 @@ import (
 // log is for logging in this package.
 var statelog = logf.Log.WithName("state-resource-webhook")
 var m = &model.Model{
-	ModelData:       make([]*gnmi.ModelData, 0),
-	StructRootType:  reflect.TypeOf((*ygotnddpstate.Device)(nil)),
-	SchemaTreeRoot:  ygotnddpstate.SchemaTree["Device"],
-	JsonUnmarshaler: ygotnddpstate.Unmarshal,
-	EnumData:        ygotnddpstate.ΛEnum,
+	ModelData:      make([]*gnmi.ModelData, 0),
+	StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
+	SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
+	//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+	//EnumData:        ygotnddpstate.ΛEnum,
 }
 
 func (r *State) SetupWebhookWithManager(mgr ctrl.Manager) error {
