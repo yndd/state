@@ -11,6 +11,9 @@ spec:
     - apiGroups: [target.yndd.io]
       resources: [targets, targets/status]
       verbs: [get, list, watch, update, patch, create, delete]
+    - apiGroups: ["*"]
+      resources: [secrets]
+      verbs: [get, list, watch]
     containers:
     - container:
         name: kube-rbac-proxy
@@ -24,7 +27,7 @@ spec:
         - containerPort: 8443
           name: https
     - container:
-        name: worker
+        name: controller
         image: yndd/state-worker-controller:latest
       extras:
         - {name: grpc, service: true, certificate: true, port: 9999, target-port: 9999}

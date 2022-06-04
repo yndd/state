@@ -46,6 +46,7 @@ import (
 	"github.com/yndd/state/pkg/ygotnddpstate"
 	"github.com/yndd/target/pkg/targetcontroller"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -92,20 +93,6 @@ var startCmd = &cobra.Command{
 
 		// +kubebuilder:scaffold:builder
 
-		// handles target updates from the k8s api server
-		zlog.Info("create manager")
-		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-			Scheme:                 scheme,
-			MetricsBindAddress:     metricsAddr,
-			Port:                   7443,
-			HealthProbeBindAddress: probeAddr,
-			LeaderElection:         enableLeaderElection,
-			LeaderElectionID:       "c66ce353.ndd.yndd.io",
-		})
-		if err != nil {
-			return errors.Wrap(err, "Cannot create manager")
-		}
-
 		// create a service discovery registrator
 		reg, err := registrator.New(cmd.Context(), ctrl.GetConfigOrDie(), &registrator.Options{
 			Logger:                    logger,
@@ -118,19 +105,28 @@ var startCmd = &cobra.Command{
 			return errors.Wrap(err, "Cannot create registrator")
 		}
 
+		cl, err := client.New(ctrl.GetConfigOrDie(), client.Options{
+			Scheme: scheme,
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot create client")
+		}
+
 		// initialize the cache
 		c := cache.New()
 
-		// initialaize the colllector
+		// initialize the colllector
 		col := collector.New(cmd.Context(),
 			collector.WithLogger(logger),
+			collector.WithCache(c),
 		)
 
 		// create a state target controller for creataing/deleting targets
 		// initializes/delete the cache with the target model
 		// start/stop target in the collector
-		stc := statetargetcontroller.New(cmd.Context(), ctrl.GetConfigOrDie(), &statetargetcontroller.Options{
+		stc := statetargetcontroller.New(cmd.Context(), &statetargetcontroller.Options{
 			Logger:      logger,
+			Client:      cl,
 			Registrator: reg,
 			Collector:   col,
 			Cache:       c,
@@ -164,7 +160,7 @@ var startCmd = &cobra.Command{
 			Health:  true,
 		},
 			grpcserver.WithLogger(logger),
-			grpcserver.WithClient(mgr.GetClient()),
+			grpcserver.WithClient(cl),
 			grpcserver.WithGetHandler(origin.State, ssc.Get),
 			grpcserver.WithSetUpdateHandler(origin.State, ssc.Set),
 			grpcserver.WithSetReplaceHandler(origin.State, ssc.Set),
@@ -187,6 +183,20 @@ var startCmd = &cobra.Command{
 		)
 		if err := tc.Start(); err != nil {
 			return errors.Wrap(err, "Cannot start target controller")
+		}
+
+		// handles target updates from the k8s api server
+		zlog.Info("create manager")
+		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:                 scheme,
+			MetricsBindAddress:     metricsAddr,
+			Port:                   7443,
+			HealthProbeBindAddress: probeAddr,
+			LeaderElection:         enableLeaderElection,
+			LeaderElectionID:       "c66ce353.ndd.yndd.io",
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot create manager")
 		}
 
 		// initialize controllers

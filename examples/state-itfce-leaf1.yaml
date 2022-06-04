@@ -2,10 +2,11 @@ apiVersion: state.yndd.io/v1alpha1
 kind: State
 metadata:
   name: state-itfce-leaf1
-  namespace: default
+  namespace: ndd-system
 spec:
-  deploymentPolicy: Active
-  deletionPolicy: Delete
+  lifecycle:
+    deploymentPolicy: active
+    deletionPolicy: delete
   targetRef:
     name: leaf1
   properties:

@@ -47,7 +47,7 @@ func (r *State) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-state-state-yndd-io-v1alpha1-state,mutating=true,failurePolicy=fail,sideEffects=None,groups=state.state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=mutate.state.state.yndd.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-state-yndd-io-v1alpha1-state,mutating=true,failurePolicy=fail,sideEffects=None,groups=state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=mstate.state.yndd.io,admissionReviewVersions=v1
 var _ webhook.Defaulter = &State{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
@@ -83,7 +83,7 @@ func (r *State) Default() {
 
 }
 
-//+kubebuilder:webhook:path=/validate-state-state-yndd-io-v1alpha1-state,mutating=false,failurePolicy=fail,sideEffects=None,groups=state.state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=validate.state.state.yndd.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-state-yndd-io-v1alpha1-state,mutating=false,failurePolicy=fail,sideEffects=None,groups=state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=vstate.state.yndd.io,admissionReviewVersions=v1
 var _ webhook.Validator = &State{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type

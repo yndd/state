@@ -1,4 +1,4 @@
-apiVersion: state.nddp.yndd.io/v1alpha1
+apiVersion: state.yndd.io/v1alpha1
 kind: State
 metadata:
   name: state-itfce-srl1
@@ -17,7 +17,7 @@ spec:
     - /interface[name=*]/oper-state
     - /interface[name=*]/subinterface[index=*]/oper-state
 ---
-apiVersion: state.nddp.yndd.io/v1alpha1
+apiVersion: state.yndd.io/v1alpha1
 kind: State
 metadata:
   name: state-itfce-srl2

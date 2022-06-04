@@ -8,6 +8,9 @@ spec:
     name: state-reconciler
     type: statefulset
     permissionRequests:
+    - apiGroups: ["*"]
+      resources: [secrets]
+      verbs: [get, list, watch]
     containers:
     - container:
         name: kube-rbac-proxy
@@ -21,7 +24,7 @@ spec:
         - containerPort: 8443
           name: https
     - container:
-        name: reconciler
+        name: controller
         image: yndd/state-reconciler-controller:latest
       extras:
         - {name: webhook, webhook: true, service: true, certificate: true, port: 443, target-port: 9443}

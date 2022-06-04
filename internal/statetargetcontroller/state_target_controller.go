@@ -25,12 +25,11 @@ import (
 	"github.com/yndd/cache/pkg/origin"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/meta"
-	"github.com/yndd/ndd-runtime/pkg/resource"
 	"github.com/yndd/registrator/registrator"
 	"github.com/yndd/state/internal/collector"
 	targetv1 "github.com/yndd/target/apis/target/v1"
 	"github.com/yndd/target/pkg/targetinstance"
-	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // StateTargetController defines the interfaces for the target state controller
@@ -45,6 +44,7 @@ type StateTargetController interface {
 
 type Options struct {
 	Logger      logging.Logger
+	Client      client.Client
 	Registrator registrator.Registrator
 	Collector   collector.Collector
 	TargetModel *model.Model
@@ -62,18 +62,19 @@ type stateTargetController struct {
 	targets map[string]targetinstance.TargetInstance
 
 	// kubernetes
-	client resource.ClientApplicator // used to get the target credentials
+	client client.Client // used to get the target credentials
 
 	ctx context.Context
 	log logging.Logger
 }
 
-func New(ctx context.Context, config *rest.Config, o *Options, opts ...Option) StateTargetController {
+func New(ctx context.Context, o *Options, opts ...Option) StateTargetController {
 	log := o.Logger
 	log.Debug("new target state controller")
 
 	c := &stateTargetController{
 		log:     o.Logger,
+		client:  o.Client,
 		options: o, // contains all options
 		m:       sync.RWMutex{},
 		targets: make(map[string]targetinstance.TargetInstance),
@@ -135,7 +136,7 @@ func (c *stateTargetController) StartTarget(nsTargetName string) {
 		NsTargetName: nsTargetName,
 		TargetName:   targetName,
 		Cache:        c.options.Cache,
-		Client:       c.client,
+		Client:       c.client, // used to get target credentials
 		Registrator:  c.options.Registrator,
 	})
 	c.addTargetInstance(nsTargetName, ti)
