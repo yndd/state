@@ -127,9 +127,10 @@ var startCmd = &cobra.Command{
 
 		// initialize controllers
 		if err := controllers.Setup(mgr, &shared.NddControllerOptions{
-			Logger:    logging.NewLogrLogger(zlog.WithName("state")),
-			Poll:      pollInterval,
-			Namespace: namespace,
+			Logger:      logging.NewLogrLogger(zlog.WithName("state")),
+			Poll:        pollInterval,
+			Namespace:   namespace,
+			Registrator: reg,
 			Copts: controller.Options{
 				MaxConcurrentReconciles: concurrency,
 				RateLimiter:             ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS),

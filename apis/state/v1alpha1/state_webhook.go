@@ -34,10 +34,10 @@ import (
 // log is for logging in this package.
 var statelog = logf.Log.WithName("state-resource-webhook")
 var m = &model.Model{
-	ModelData:      make([]*gnmi.ModelData, 0),
-	StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
-	SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
-	//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+	ModelData:       make([]*gnmi.ModelData, 0),
+	StructRootType:  reflect.TypeOf((*ygotnddpstate.YnddState_StateEntry)(nil)),
+	SchemaTreeRoot:  ygotnddpstate.SchemaTree["NddpState_StateEntry"],
+	JsonUnmarshaler: ygotnddpstate.Unmarshal,
 	//EnumData:        ygotnddpstate.ΛEnum,
 }
 
@@ -48,6 +48,7 @@ func (r *State) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 //+kubebuilder:webhook:path=/mutate-state-yndd-io-v1alpha1-state,mutating=true,failurePolicy=fail,sideEffects=None,groups=state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=mstate.state.yndd.io,admissionReviewVersions=v1
+
 var _ webhook.Defaulter = &State{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
@@ -84,6 +85,7 @@ func (r *State) Default() {
 }
 
 //+kubebuilder:webhook:path=/validate-state-yndd-io-v1alpha1-state,mutating=false,failurePolicy=fail,sideEffects=None,groups=state.yndd.io,resources="*",verbs=create;update,versions=v1alpha1,name=vstate.state.yndd.io,admissionReviewVersions=v1
+
 var _ webhook.Validator = &State{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
@@ -105,7 +107,7 @@ func (r *State) ValidateCreate() error {
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: "srl3.nddp.yndd.io", Kind: "Srl3Device"},
+		schema.GroupKind{Group: Group, Kind: StateKind},
 		r.Name, allErrs)
 }
 
@@ -127,7 +129,7 @@ func (r *State) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: "state.yndd.io", Kind: "State"},
+		schema.GroupKind{Group: Group, Kind: StateKind},
 		r.Name, allErrs)
 
 }

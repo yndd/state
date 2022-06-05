@@ -96,19 +96,21 @@ func (c *collector) IsActive(target string) bool {
 }
 
 func (c *collector) ReconcileTarget(tc *types.TargetConfig) error {
-	log := c.log.WithValues("target", tc.Name)
 	cacheNsTargetName := meta.NamespacedName(tc.Name).GetPrefixNamespacedName(origin.State)
+	log := c.log.WithValues("target", tc.Name, "cacheNsTargetName", cacheNsTargetName)
+	log.Debug("Collector ReconcileTarget...")
 
 	ce, err := c.cache.GetEntry(cacheNsTargetName)
 	if err != nil {
 		log.Debug("cache not ready", "error", err)
-		// we dont return an error as this can happen
-		return nil
+		return err
 	}
 	runningConfig, ok := ce.GetRunningConfig().(*ygotnddpstate.Device)
 	if !ok {
+		log.Debug("unexpected Object")
 		return errors.New("unexpected Object")
 	}
+	log.Debug("Collector", "Running config", runningConfig)
 	// validate if there are still state entries in the config, if not we should delete the target
 	if len(runningConfig.StateEntry) == 0 {
 		if c.IsActive(tc.Name) {
@@ -116,9 +118,6 @@ func (c *collector) ReconcileTarget(tc *types.TargetConfig) error {
 			if err != nil {
 				return err
 			}
-		}
-		if err := c.cache.DeleteEntry(tc.Name); err != nil {
-			return err
 		}
 		log.Debug("handleUpdate No state config left")
 		return nil

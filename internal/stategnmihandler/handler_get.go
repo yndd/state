@@ -29,10 +29,10 @@ import (
 
 func (s *subServer) Get(ctx context.Context, req *gnmi.GetRequest) (*gnmi.GetResponse, error) {
 	prefix := req.GetPrefix()
-	log := s.log.WithValues("origin", prefix.GetOrigin(), "target", prefix.GetTarget())
-	log.Debug("Get...", "path", req.GetPath())
-
 	cacheNsTargetName := meta.NamespacedName(prefix.GetTarget()).GetPrefixNamespacedName(prefix.GetOrigin())
+	log := s.log.WithValues("origin", prefix.GetOrigin(), "target", prefix.GetTarget(), "cacheNsTargetName", cacheNsTargetName)
+
+	log.Debug("Get...", "path", req.GetPath())
 
 	ce, err := s.cache.GetEntry(cacheNsTargetName)
 	if err != nil {

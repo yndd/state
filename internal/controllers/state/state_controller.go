@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 
@@ -33,8 +32,9 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"github.com/pkg/errors"
 	"github.com/yndd/cache/pkg/model"
-	pkgv1 "github.com/yndd/ndd-core/apis/pkg/v1"
-	nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
+	"github.com/yndd/cache/pkg/origin"
+
+	//nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
 	"github.com/yndd/ndd-runtime/pkg/event"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/resource"
@@ -48,7 +48,8 @@ import (
 	targetv1 "github.com/yndd/target/apis/target/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
+
+	//corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,16 +63,16 @@ func Setup(mgr ctrl.Manager, nddopts *shared.NddControllerOptions) error {
 	name := managed.ControllerName(statev1alpha1.StateGroupKind)
 
 	fm := &model.Model{
-		StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
-		SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
-		//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+		StructRootType:  reflect.TypeOf((*ygotnddpstate.Device)(nil)),
+		SchemaTreeRoot:  ygotnddpstate.SchemaTree["Device"],
+		JsonUnmarshaler: ygotnddpstate.Unmarshal,
 		//EnumData:        ygotnddpstate.ΛEnum,
 	}
 
 	m := &model.Model{
-		StructRootType: reflect.TypeOf((*ygotnddpstate.YnddState_StateEntry)(nil)),
-		SchemaTreeRoot: ygotnddpstate.SchemaTree["NddpState_StateEntry"],
-		//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+		StructRootType:  reflect.TypeOf((*ygotnddpstate.YnddState_StateEntry)(nil)),
+		SchemaTreeRoot:  ygotnddpstate.SchemaTree["NddpState_StateEntry"],
+		JsonUnmarshaler: ygotnddpstate.Unmarshal,
 		//EnumData:        ygotnddpstate.ΛEnum,
 	}
 
@@ -136,34 +137,39 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 
 	// find network node that is configured status
 	t := &targetv1.Target{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetTargetReference().Name}, t); err != nil {
+	if err := c.kube.Get(ctx, types.NamespacedName{
+		Name:      cr.GetTargetReference().Name,
+		Namespace: cr.GetNamespace(),
+	}, t); err != nil {
 		return nil, errors.Wrap(err, errGetTarget)
 	}
 
-	if t.GetCondition(nddv1.ConditionKindReady).Status != corev1.ConditionTrue {
-		return nil, errors.New(targetNotConfigured)
-	}
+	// TODO Target status should be updated
+	//if t.GetCondition(nddv1.ConditionKindReady).Status != corev1.ConditionTrue {
+	//	return nil, errors.New(targetNotConfigured)
+	//}
 
 	// TODO check ServiceDiscovery and decide to use the address or dns resolution
-	address, err := c.registrator.GetEndpointAddress(ctx,
-		os.Getenv("SERVICE_NAME"),
-		pkgv1.GetTargetTag(t.GetNamespace(), t.GetName()))
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get query from registrator")
-	}
+	/*
+		address, err := c.registrator.GetEndpointAddress(ctx,
+			os.Getenv("SERVICE_NAME"),
+			pkgv1.GetTargetTag(t.GetNamespace(), t.GetName()))
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot get query from registrator")
+		}
+	*/
+	address := "state-worker-controller-grpc-svc.ndd-system.svc.cluster.local:9999"
+	log.Debug("target address", "address", address)
 
 	cfg := &gnmitypes.TargetConfig{
-		Name:    cr.GetTargetReference().Name,
-		Address: address,
-		//Username:   utils.StringPtr("admin"),
-		//Password:   utils.StringPtr("admin"),
+		Name:       cr.GetTargetReference().Name,
+		Address:    address,
 		Timeout:    10 * time.Second,
 		SkipVerify: utils.BoolPtr(true),
-		//Insecure:   utils.BoolPtr(true),
-		TLSCA:   utils.StringPtr(""), //TODO TLS
-		TLSCert: utils.StringPtr(""), //TODO TLS
-		TLSKey:  utils.StringPtr(""),
-		Gzip:    utils.BoolPtr(false),
+		TLSCA:      utils.StringPtr(""), //TODO TLS
+		TLSCert:    utils.StringPtr(""), //TODO TLS
+		TLSKey:     utils.StringPtr(""),
+		Gzip:       utils.BoolPtr(false),
 	}
 
 	cl := target.NewTarget(cfg)
@@ -199,10 +205,10 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 		return managed.ExternalObservation{}, err
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, "/")
 
 	req := &gnmi.GetRequest{
-		Prefix:   &gnmi.Path{Target: crTarget},
+		Prefix:   &gnmi.Path{Origin: origin.State, Target: crTarget},
 		Path:     []*gnmi.Path{{}},
 		Encoding: gnmi.Encoding_JSON,
 	}
@@ -280,7 +286,8 @@ func (e *externalDevice) Observe(ctx context.Context, mg resource.Managed) (mana
 }
 
 func (e *externalDevice) Create(ctx context.Context, mg resource.Managed) error {
-	log := e.log.WithValues("Resource", mg.GetName())
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, "/")
+	log := e.log.WithValues("Resource", mg.GetName(), "crTarget", crTarget)
 	log.Debug("Creating ...")
 
 	updates, err := e.getUpate(mg)
@@ -288,10 +295,8 @@ func (e *externalDevice) Create(ctx context.Context, mg resource.Managed) error 
 		return errors.Wrap(err, errCreateResource)
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
-
 	req := &gnmi.SetRequest{
-		Prefix:  &gnmi.Path{Target: crTarget},
+		Prefix:  &gnmi.Path{Origin: origin.State, Target: crTarget},
 		Replace: updates,
 	}
 
@@ -304,7 +309,8 @@ func (e *externalDevice) Create(ctx context.Context, mg resource.Managed) error 
 }
 
 func (e *externalDevice) Delete(ctx context.Context, mg resource.Managed) error {
-	log := e.log.WithValues("Resource", mg.GetName())
+	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, "/")
+	log := e.log.WithValues("Resource", mg.GetName(), "crTarget", crTarget)
 	log.Debug("Deleting ...")
 
 	paths, err := e.getPath(mg)
@@ -312,10 +318,8 @@ func (e *externalDevice) Delete(ctx context.Context, mg resource.Managed) error 
 		return errors.Wrap(err, errDeleteResource)
 	}
 
-	crTarget := strings.Join([]string{mg.GetNamespace(), mg.GetTargetReference().Name}, ".")
-
 	req := &gnmi.SetRequest{
-		Prefix: &gnmi.Path{Target: crTarget},
+		Prefix: &gnmi.Path{Origin: origin.State, Target: crTarget},
 		Delete: paths,
 	}
 
@@ -348,7 +352,7 @@ func (e *externalDevice) getUpate(mg resource.Managed) ([]*gnmi.Update, error) {
 		{
 			Path: &gnmi.Path{
 				Elem: []*gnmi.PathElem{
-					{Name: "state-entry", Key: map[string]string{"name": *stateEntry.Name}},
+					{Name: "stateEntry", Key: map[string]string{"name": *stateEntry.Name}},
 				},
 			},
 			Val: &gnmi.TypedValue{Value: &gnmi.TypedValue_JsonVal{JsonVal: []byte(stateEntryJson)}},
@@ -369,7 +373,7 @@ func (e *externalDevice) getPath(mg resource.Managed) ([]*gnmi.Path, error) {
 	return []*gnmi.Path{
 		{
 			Elem: []*gnmi.PathElem{
-				{Name: "state-entry", Key: map[string]string{"name": *stateEntry.Name}},
+				{Name: "stateEntry", Key: map[string]string{"name": *stateEntry.Name}},
 			},
 		},
 	}, nil
@@ -380,6 +384,7 @@ func (e *externalDevice) getValidatedGoStructFromCr(mg resource.Managed) (ygot.V
 	if !ok {
 		return nil, errors.New(errUnexpectedObject)
 	}
+	e.log.Debug("spec data", "spec", cr.Spec)
 	return e.m.NewConfigStruct(cr.Spec.Properties.Raw, true)
 }
 

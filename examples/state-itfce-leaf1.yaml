@@ -8,7 +8,7 @@ spec:
     deploymentPolicy: active
     deletionPolicy: delete
   targetRef:
-    name: leaf1
+    name: leaf1.sim.1a-b0-02-ff-00-00
   properties:
     name: interface
     prefix: itfce

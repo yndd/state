@@ -1,4 +1,3 @@
-
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -12,12 +11,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-state-nddp-yndd-io-v1alpha1-state
+      path: /mutate-state-yndd-io-v1alpha1-state
   failurePolicy: Fail
-  name: mutate.srl3.nddp.yndd.io
+  name: mstate.state.yndd.io
   rules:
   - apiGroups:
-    - state.nddp.yndd.io
+    - state.yndd.io
     apiVersions:
     - v1alpha1
     operations:
@@ -26,7 +25,6 @@ webhooks:
     resources:
     - '*'
   sideEffects: None
-
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -40,12 +38,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-state-nddp-yndd-io-v1alpha1-state
+      path: /validate-state-yndd-io-v1alpha1-state
   failurePolicy: Fail
-  name: validate.srl3.nddp.yndd.io
+  name: vstate.state.yndd.io
   rules:
   - apiGroups:
-    - srl3.nddp.yndd.io
+    - state.yndd.io
     apiVersions:
     - v1alpha1
     operations:

@@ -131,9 +131,9 @@ var startCmd = &cobra.Command{
 			Collector:   col,
 			Cache:       c,
 			TargetModel: &model.Model{
-				StructRootType: reflect.TypeOf((*ygotnddpstate.Device)(nil)),
-				SchemaTreeRoot: ygotnddpstate.SchemaTree["Device"],
-				//JsonUnmarshaler: ygotnddpstate.Unmarshal,
+				StructRootType:  reflect.TypeOf((*ygotnddpstate.Device)(nil)),
+				SchemaTreeRoot:  ygotnddpstate.SchemaTree["Device"],
+				JsonUnmarshaler: ygotnddpstate.Unmarshal,
 				//EnumData:        ygotnddpstate.ΛEnum,
 			},
 		})
@@ -158,6 +158,7 @@ var startCmd = &cobra.Command{
 			Address: ":" + strconv.Itoa(pkgmetav1.GnmiServerPort),
 			GNMI:    true,
 			Health:  true,
+			//Insecure: true,
 		},
 			grpcserver.WithLogger(logger),
 			grpcserver.WithClient(cl),

@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/openconfig/ygot/ygot"
 	"github.com/yndd/cache/pkg/cache"
 	"github.com/yndd/cache/pkg/model"
 	"github.com/yndd/cache/pkg/origin"
@@ -27,6 +28,7 @@ import (
 	"github.com/yndd/ndd-runtime/pkg/meta"
 	"github.com/yndd/registrator/registrator"
 	"github.com/yndd/state/internal/collector"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 	targetv1 "github.com/yndd/target/apis/target/v1"
 	"github.com/yndd/target/pkg/targetinstance"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,10 +91,10 @@ func New(ctx context.Context, o *Options, opts ...Option) StateTargetController 
 }
 
 // get a target instance from the target configuration controller
-func (c *stateTargetController) GetTargetInstance(targetName string) targetinstance.TargetInstance {
+func (c *stateTargetController) GetTargetInstance(nsTargetName string) targetinstance.TargetInstance {
 	c.m.Lock()
 	defer c.m.Unlock()
-	t, ok := c.targets[targetName]
+	t, ok := c.targets[nsTargetName]
 	if !ok {
 		return nil
 	}
@@ -143,9 +145,13 @@ func (c *stateTargetController) StartTarget(nsTargetName string) {
 
 	// initialize the state target cache
 	stateCacheNsTargetName := meta.NamespacedName(nsTargetName).GetPrefixNamespacedName(origin.State)
-	cce := cache.NewCacheEntry(stateCacheNsTargetName)
-	cce.SetModel(c.options.TargetModel)
-	c.options.Cache.AddEntry(cce)
+	log.Debug("start target; init target cache...", "stateCacheNsTargetName", stateCacheNsTargetName)
+	ce := cache.NewCacheEntry(stateCacheNsTargetName)
+	ce.SetModel(c.options.TargetModel)
+	if err := initRunningConfig(ce); err != nil {
+		log.Debug("start target: init running config failed", "error", err)
+	}
+	c.options.Cache.AddEntry(ce)
 
 	// start the target in the collector if there is a running config
 	tc, err := ti.GetTargetConfig()
@@ -166,6 +172,31 @@ func (c *stateTargetController) StopTarget(nsTargetName string) {
 	// delete the target instance -> stops the collectors, reconciler
 	c.options.Collector.StopTarget(nsTargetName)
 
+	stateCacheNsTargetName := meta.NamespacedName(nsTargetName).GetPrefixNamespacedName(origin.State)
+	if err := c.options.Cache.DeleteEntry(stateCacheNsTargetName); err != nil {
+		log.Debug("delete target from cache", "error", err)
+	}
+
 	c.deleteTargetInstance(nsTargetName)
 	log.Debug("deleted target...")
+}
+
+func initRunningConfig(ce cache.CacheEntry) error {
+	// initialize the go struct
+	d := &ygotnddpstate.Device{
+		//StateEntry: map[string]*ygotnddpstate.YnddState_StateEntry{},
+	}
+	j, err := ygot.EmitJSON(d, &ygot.EmitJSONConfig{})
+	if err != nil {
+		return err
+	}
+	// get the model
+	m := ce.GetModel()
+	goStruct, err := m.NewConfigStruct([]byte(j), true)
+	if err != nil {
+		return err
+	}
+	// set running config to an empty object
+	ce.SetRunningConfig(goStruct)
+	return nil
 }
