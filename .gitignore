@@ -27,3 +27,4 @@ testbin/*
 *~
 PRIVATE.md
 package/nddp-state-*
+.vscode

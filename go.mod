@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/karimra/gnmic v0.24.4
-	github.com/nats-io/nats.go v1.14.0
+	github.com/nats-io/nats.go v1.16.0
 	github.com/openconfig/gnmi v0.0.0-20220503232738-6eb133c65a13
 	github.com/openconfig/goyang v1.0.0
 	github.com/openconfig/ygot v0.22.1
@@ -14,11 +14,11 @@ require (
 	github.com/yndd/cache v0.0.6
 	github.com/yndd/grpchandlers v0.0.4
 	github.com/yndd/grpcserver v0.0.10
-	github.com/yndd/ndd-core v0.2.21
+	github.com/yndd/ndd-core v0.2.23
 	github.com/yndd/ndd-runtime v0.5.18
 	github.com/yndd/ndd-yang v0.2.8
 	github.com/yndd/nddo-runtime v0.0.85
-	github.com/yndd/observability-runtime v0.0.1
+	github.com/yndd/observability-runtime v0.0.2
 	github.com/yndd/reconciler-controller v0.0.20
 	github.com/yndd/registrator v0.0.20
 	github.com/yndd/target v0.0.81

@@ -110,10 +110,10 @@ docker-push-worker: ## Push docker images.
 .PHONY: package-build
 package-build: kubectl-ndd ## build ndd package.
 	rm -rf package/reconciler/*.nddpkg
-	gomplate -d repo=env:REPO -f package/reconciler/ndd.gotmpl > package/reconciler/ndd.yaml
+	gomplate -d repo=env:REGISTRY -f package/reconciler/ndd.gotmpl > package/reconciler/ndd.yaml
 	cd package/reconciler;PATH=$$PATH:$(LOCALBIN) kubectl ndd package build -t provider;cd ../..
 	rm -rf package/worker/*.nddpkg
-	gomplate -d repo=env:REPO -f package/worker/ndd.gotmpl > package/worker/ndd.yaml
+	gomplate -d repo=env:REGISTRY -f package/worker/ndd.gotmpl > package/worker/ndd.yaml
 	cd package/worker;PATH=$$PATH:$(LOCALBIN) kubectl ndd package build -t provider;cd ../..
 
 .PHONY: package-push
@@ -136,7 +136,7 @@ KUBECTL_NDD ?= $(LOCALBIN)/kubectl-ndd
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.8.0
+CONTROLLER_TOOLS_VERSION ?= v0.9.0
 KUBECTL_NDD_VERSION ?= v0.2.20
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
