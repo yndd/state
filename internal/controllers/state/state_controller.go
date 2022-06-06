@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -35,6 +36,8 @@ import (
 	"github.com/yndd/cache/pkg/origin"
 
 	//nddv1 "github.com/yndd/ndd-runtime/apis/common/v1"
+	pkgmetav1 "github.com/yndd/ndd-core/apis/pkg/meta/v1"
+	pkgv1 "github.com/yndd/ndd-core/apis/pkg/v1"
 	"github.com/yndd/ndd-runtime/pkg/event"
 	"github.com/yndd/ndd-runtime/pkg/logging"
 	"github.com/yndd/ndd-runtime/pkg/resource"
@@ -151,14 +154,23 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 
 	// TODO check ServiceDiscovery and decide to use the address or dns resolution
 	/*
-		address, err := c.registrator.GetEndpointAddress(ctx,
+
+	 */
+
+	//address := "state-worker-controller-grpc-svc.ndd-system.svc.cluster.local"
+	workerservice := strings.Join([]string{os.Getenv("COMPOSITE_PROVIDER_NAME"), "worker-controller-grpc-svc"}, "-")
+	address := fmt.Sprintf("%s.%s.%s.%s.%s:%d", workerservice, os.Getenv("POD_NAMESPACE"), "svc", "cluster", "local", pkgmetav1.GnmiServerPort)
+
+	if os.Getenv("SERVICE_DISCOVERY") != "" {
+		var err error
+		address, err = c.registrator.GetEndpointAddress(ctx,
 			os.Getenv("SERVICE_NAME"),
 			pkgv1.GetTargetTag(t.GetNamespace(), t.GetName()))
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot get query from registrator")
 		}
-	*/
-	address := "state-worker-controller-grpc-svc.ndd-system.svc.cluster.local:9999"
+	}
+
 	log.Debug("target address", "address", address)
 
 	cfg := &gnmitypes.TargetConfig{
