@@ -128,6 +128,13 @@ func (c *stateTargetController) deleteTargetInstance(nsTargetName string) error 
 func (c *stateTargetController) StartTarget(nsTargetName string) {
 	log := c.log.WithValues("nsTargetName", nsTargetName)
 	log.Debug("start target...")
+
+	if c.GetTargetInstance(nsTargetName) != nil {
+		log.Debug("start target, nothing to do as target was already active ...")
+		return
+	}
+	// initialize the target since no data/context of the target exists
+
 	// the target we get on the channel has <namespace.target> semantics
 	targetName := meta.NamespacedName(nsTargetName).GetName()
 	namespace := meta.NamespacedName(nsTargetName).GetNameSpace()
