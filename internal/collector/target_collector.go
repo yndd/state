@@ -18,14 +18,14 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/karimra/gnmic/target"
 	"github.com/karimra/gnmic/types"
-	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/yndd/ndd-runtime/pkg/logging"
+	"github.com/yndd/pubsub"
+	"github.com/yndd/pubsub/publisher"
 	"github.com/yndd/state/pkg/ygotnddpstate"
 	"google.golang.org/grpc"
 )
@@ -36,7 +36,7 @@ const (
 	defaultTargetReceiveBuffer = 1000
 	defaultLockRetry           = 5 * time.Second
 	defaultRetryTimer          = 10 * time.Second
-	// nats
+	// mq
 	streamName     = "nddpstate"
 	streamSubjects = "nddpstate.>"
 
@@ -61,9 +61,9 @@ func WithTargetCollectorLogger(log logging.Logger) TargetCollectorOption {
 	}
 }
 
-func WithTargetCollectorNATSAddr(addr string) TargetCollectorOption {
+func WithTargetCollectorMQAddr(addr string) TargetCollectorOption {
 	return func(o *targetCollector) {
-		o.natsAddr = addr
+		o.mqAddr = addr
 	}
 }
 
@@ -71,10 +71,10 @@ func WithTargetCollectorNATSAddr(addr string) TargetCollectorOption {
 type targetCollector struct {
 	// target the state is collected from
 	target *target.Target
-	// update channel nats producer goroutines read from
-	updateCh chan *stateMsg
-	// comma separated nats server addresses
-	natsAddr string
+	// update channel pubsub publisher goroutines read from
+	updateCh chan *pubsub.Msg
+	// comma separated mq server addresses
+	mqAddr string
 	// subscriptions derived from State CR
 	subscriptions []*Subscription
 	// channel to signal stopping of the state collector
@@ -94,7 +94,7 @@ func NewTargetCollector(ctx context.Context, tc *types.TargetConfig, mc *ygotndd
 				StateConfig: mc,
 			},
 		},
-		updateCh: make(chan *stateMsg),
+		updateCh: make(chan *pubsub.Msg),
 		stopCh:   make(chan struct{}),
 	}
 	for _, opt := range opts {
@@ -134,12 +134,12 @@ func (c *targetCollector) GetSubscription(subName string) *Subscription {
 	return nil
 }
 
-// Start starts the target collector, i.e the nats producer and the gnmi subscription
+// Start starts the target collector, i.e the mq publisher and the gnmi subscription
 func (c *targetCollector) Start(ctx context.Context) error {
 	log := c.log.WithValues("Target", c.target.Config.Name, "Address", c.target.Config.Address)
 	log.Debug("Starting target collector", "target", c.target.Config.Name)
 
-	go c.natsProducerWorker(ctx)
+	go c.publisherWorker(ctx)
 
 	go func() {
 		for {
@@ -238,55 +238,21 @@ func (c *targetCollector) stopSubscription(s *Subscription) error {
 	return nil
 }
 
-func (c *targetCollector) natsProducerWorker(ctx context.Context) {
-	var nc *nats.Conn
-	var jsc nats.JetStreamContext
-	var err error
+func (c *targetCollector) publisherWorker(ctx context.Context) {
 STARTCONN:
 	select {
 	case <-ctx.Done():
-		c.log.Debug("nats producer stopped", "error", ctx.Err())
+		c.log.Debug("publisher stopped", "error", ctx.Err())
 		return
 	default:
-		nc, err = nats.Connect(c.natsAddr)
-		if err != nil {
-			time.Sleep(time.Second)
-			goto STARTCONN
-		}
-		defer nc.Close()
-		jsc, err = nc.JetStream()
-		if err != nil {
-			c.log.Info("inconsistent JetStream Options", "error", err)
-		}
-		err = createStream(jsc, &nats.StreamConfig{
-			Name:     streamName,
-			Subjects: []string{streamSubjects},
-		})
-		if err != nil {
-			nc.Close()
-			time.Sleep(time.Second)
-			goto STARTCONN
-		}
-		for {
-			select {
-			case <-ctx.Done():
-				c.log.Debug("nats producer stopped", "error", ctx.Err())
-				return
-			case sm := <-c.updateCh:
-				c.log.Debug("state msg", "msg", sm)
-				b, err := json.Marshal(sm)
-				if err != nil {
-					c.log.Info("failed to marshal msg", "error", err)
-					continue
-				}
-				c.log.Debug("JetStream", "subject", sm.Subject, "data", string(b))
-				_, err = jsc.Publish(sm.Subject, b)
-				if err != nil {
-					c.log.Info("JetStream Publish error", "error", err)
-					nc.Close()
-					goto STARTCONN
-				}
-			}
-		}
+		pub := publisher.NewNATSPublisher(publisher.Config{
+			Address:    c.mqAddr,
+			StreamName: streamName,
+			Subjects:   []string{streamSubjects},
+			Insecure:   true,
+		}, c.log)
+
+		pub.PublishFromCh(ctx, c.updateCh)
+		goto STARTCONN
 	}
 }
