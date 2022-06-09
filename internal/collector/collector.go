@@ -21,6 +21,8 @@ type Collector interface {
 	WithLogger(log logging.Logger)
 	// add a cache to Collector
 	WithCache(c cache.Cache)
+	// add the mq address
+	WithMQAddress(addr string)
 	// check if a target exists
 	IsActive(target string) bool
 	// start target collector
@@ -42,6 +44,13 @@ func WithLogger(log logging.Logger) Option {
 func WithCache(c cache.Cache) Option {
 	return func(d Collector) {
 		d.WithCache(c)
+	}
+}
+
+// WithLogger specifies how the collector logs messages.
+func WithMQAddress(addr string) Option {
+	return func(d Collector) {
+		d.WithMQAddress(addr)
 	}
 }
 
@@ -75,6 +84,10 @@ func (c *collector) WithLogger(log logging.Logger) {
 
 func (c *collector) WithCache(cache cache.Cache) {
 	c.cache = cache
+}
+
+func (c *collector) WithMQAddress(addr string) {
+	c.mqAddr = addr
 }
 
 func (c *collector) IsActive(target string) bool {

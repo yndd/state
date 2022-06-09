@@ -2081,8 +2081,8 @@ github.com/yndd/nddr-org-registry v0.0.11/go.mod h1:5cVl1Cv1UczM72EXKJmjIzrJAQH7
 github.com/yndd/nddr-topo-registry v0.0.4/go.mod h1:f5/qMkWQa7namvEgYrNZisgvhcee4bgnFCt30NWOcf8=
 github.com/yndd/observability-runtime v0.0.2 h1:OTCqA5V6djynuwduz5McVxKCmglZiis+xOpEI2TCKCI=
 github.com/yndd/observability-runtime v0.0.2/go.mod h1:D7USBEQ4F43kKhcjSH/3GbSpQN+TsJb+SW8Gzks0mSw=
-github.com/yndd/pubsub v0.0.0-20220608053656-d4a8c0fe9903 h1:jM/UvJCor94zgFTqHOshSlwxOWx/E2WEkmUD7eeUq0g=
-github.com/yndd/pubsub v0.0.0-20220608053656-d4a8c0fe9903/go.mod h1:p4wbcfWBBdZB/eE8mcmCyD5+Py+0XE2SsCmGeOFIPp8=
+github.com/yndd/pubsub v0.0.1 h1:GP7AuM5OEbNSd+0esZ70SEtXjeNllemBdVKTmgbdvO4=
+github.com/yndd/pubsub v0.0.1/go.mod h1:p4wbcfWBBdZB/eE8mcmCyD5+Py+0XE2SsCmGeOFIPp8=
 github.com/yndd/reconciler-controller v0.0.20 h1:kc7wuPFG3TVVmZI2mH1nA4WW4YvE82tBaYfNFO5H6Fw=
 github.com/yndd/reconciler-controller v0.0.20/go.mod h1:GO582ZIjVORELBVDXjpPJC6ggfmmQ7P2ittuSjjqPVM=
 github.com/yndd/registrator v0.0.19/go.mod h1:6y85l1HVkcwJNSknGFyx8jBmw4VDgRUaF0Spku6sHiw=

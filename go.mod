@@ -175,7 +175,7 @@ require (
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/yndd/pubsub v0.0.0-20220608053656-d4a8c0fe9903
+	github.com/yndd/pubsub v0.0.1
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
