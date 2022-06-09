@@ -110,10 +110,10 @@ docker-push-worker: ## Push docker images.
 .PHONY: package-build
 package-build: kubectl-ndd ## build ndd package.
 	rm -rf package/reconciler/*.nddpkg
-	gomplate -d repo=env:REGISTRY -f package/reconciler/ndd.gotmpl > package/reconciler/ndd.yaml
+	gomplate -d registry=env:REGISTRY -f package/reconciler/ndd.gotmpl > package/reconciler/ndd.yaml
 	cd package/reconciler;PATH=$$PATH:$(LOCALBIN) kubectl ndd package build -t provider;cd ../..
 	rm -rf package/worker/*.nddpkg
-	gomplate -d repo=env:REGISTRY -f package/worker/ndd.gotmpl > package/worker/ndd.yaml
+	gomplate -d registry=env:REGISTRY -f package/worker/ndd.gotmpl > package/worker/ndd.yaml
 	cd package/worker;PATH=$$PATH:$(LOCALBIN) kubectl ndd package build -t provider;cd ../..
 
 .PHONY: package-push
