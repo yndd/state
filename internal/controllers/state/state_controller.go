@@ -152,11 +152,6 @@ func (c *connectorDevice) Connect(ctx context.Context, mg resource.Managed) (man
 	//	return nil, errors.New(targetNotConfigured)
 	//}
 
-	// TODO check ServiceDiscovery and decide to use the address or dns resolution
-	/*
-
-	 */
-
 	//address := "state-worker-controller-grpc-svc.ndd-system.svc.cluster.local"
 	workerservice := strings.Join([]string{os.Getenv("COMPOSITE_PROVIDER_NAME"), "worker-controller-grpc-svc"}, "-")
 	address := fmt.Sprintf("%s.%s.%s.%s.%s:%d", workerservice, os.Getenv("POD_NAMESPACE"), "svc", "cluster", "local", pkgmetav1.GnmiServerPort)
