@@ -21,6 +21,8 @@ type Collector interface {
 	WithLogger(log logging.Logger)
 	// add a cache to Collector
 	WithCache(c cache.Cache)
+	// add the mq address
+	WithMQAddress(addr string)
 	// check if a target exists
 	IsActive(target string) bool
 	// start target collector
@@ -45,12 +47,11 @@ func WithCache(c cache.Cache) Option {
 	}
 }
 
-// stateMsg is the msg send from a stateCollector to the collector through an update channel
-type stateMsg struct {
-	Subject   string `json:"-"`
-	Timestamp int64  `json:"timestamp,omitempty"`
-	Operation string `json:"operation,omitempty"`
-	Data      []byte `json:"data,omitempty"`
+// WithLogger specifies how the collector logs messages.
+func WithMQAddress(addr string) Option {
+	return func(d Collector) {
+		d.WithMQAddress(addr)
+	}
 }
 
 // collector is the implementation of Collector interface
@@ -61,7 +62,7 @@ type collector struct {
 	cache            cache.Cache
 	ctx              context.Context
 	cfn              context.CancelFunc
-	natsAddr         string
+	mqAddr           string
 	log              logging.Logger
 }
 
@@ -73,9 +74,6 @@ func New(ctx context.Context, opts ...Option) Collector {
 	for _, opt := range opts {
 		opt(c)
 	}
-	if c.natsAddr == "" {
-		c.natsAddr = defaultNATSAddr
-	}
 	c.ctx, c.cfn = context.WithCancel(ctx)
 	return c
 }
@@ -86,6 +84,10 @@ func (c *collector) WithLogger(log logging.Logger) {
 
 func (c *collector) WithCache(cache cache.Cache) {
 	c.cache = cache
+}
+
+func (c *collector) WithMQAddress(addr string) {
+	c.mqAddr = addr
 }
 
 func (c *collector) IsActive(target string) bool {
@@ -136,7 +138,7 @@ func (c *collector) ReconcileTarget(tc *types.TargetConfig) error {
 	// create a new target collector
 	tColl, err := NewTargetCollector(c.ctx, tc, runningConfig,
 		WithTargetCollectorLogger(c.log),
-		WithTargetCollectorNATSAddr(c.natsAddr),
+		WithTargetCollectorMQAddr(c.mqAddr),
 	)
 	if err != nil {
 		return err

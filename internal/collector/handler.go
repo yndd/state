@@ -7,12 +7,10 @@ import (
 	"strings"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/yndd/pubsub"
 )
 
 const (
-	operationUpdate = "update"
-	operationDelete = "delete"
-	//
 	dotReplChar   = "^"
 	spaceReplChar = "~"
 )
@@ -30,7 +28,7 @@ func (c *targetCollector) handleSubscribeResponse(resp *gnmi.SubscribeResponse) 
 	case *gnmi.SubscribeResponse_Update:
 		log.Debug("handle target update from device", "Prefix", resp.GetUpdate().GetPrefix())
 
-		for _, msg := range c.notificationToStateMsg(targetName, resp.GetUpdate()) {
+		for _, msg := range c.notificationToPubSubMsg(targetName, resp.GetUpdate()) {
 			c.updateCh <- msg
 		}
 
@@ -42,23 +40,26 @@ func (c *targetCollector) handleSubscribeResponse(resp *gnmi.SubscribeResponse) 
 }
 
 // TODO: sanitize subject before returning
-func (c *targetCollector) notificationToStateMsg(targetName string, n *gnmi.Notification) []*stateMsg {
+func (c *targetCollector) notificationToPubSubMsg(targetName string, n *gnmi.Notification) []*pubsub.Msg {
 	sb := new(strings.Builder)
 	fmt.Fprintf(sb, "%s.%s", streamName, targetName)
 	if pr := gNMIPathToSubject(n.GetPrefix()); pr != "" {
 		fmt.Fprintf(sb, ".%s", pr)
 	}
 	prefix := sb.String()
-	result := make([]*stateMsg, 0, len(n.GetUpdate())+len(n.GetDelete()))
+	result := make([]*pubsub.Msg, 0, len(n.GetUpdate())+len(n.GetDelete()))
 	for _, upd := range n.GetUpdate() {
 		if pr := gNMIPathToSubject(upd.GetPath()); pr != "" {
 			sb.Reset()
 			fmt.Fprintf(sb, "%s.%s", prefix, pr)
-			sm := &stateMsg{
+			sm := &pubsub.Msg{
 				Subject:   sb.String(),
 				Timestamp: n.GetTimestamp(),
-				Operation: operationUpdate,
+				Operation: pubsub.Operation_OPERATION_UPDATE,
 				Data:      []byte(upd.Val.GetStringVal()),
+				Tags: map[string]string{
+					"target": targetName,
+				},
 			}
 			c.log.Debug("state message", "notification", n, "msg", sm)
 			result = append(result, sm)
@@ -68,10 +69,13 @@ func (c *targetCollector) notificationToStateMsg(targetName string, n *gnmi.Noti
 		if pr := gNMIPathToSubject(del); pr != "" {
 			sb.Reset()
 			fmt.Fprintf(sb, "%s.%s", prefix, pr)
-			sm := &stateMsg{
+			sm := &pubsub.Msg{
 				Subject:   sb.String(),
 				Timestamp: n.GetTimestamp(),
-				Operation: operationDelete,
+				Operation: pubsub.Operation_OPERATION_DELETE,
+				Tags: map[string]string{
+					"target": targetName,
+				},
 			}
 			c.log.Debug("state message", "notification", n, "msg", sm)
 			result = append(result, sm)
@@ -112,9 +116,4 @@ func gNMIPathToSubject(p *gnmi.Path) string {
 func sanitizeKey(k string) string {
 	s := regDot.ReplaceAllString(k, dotReplChar)
 	return regSpace.ReplaceAllString(s, spaceReplChar)
-}
-
-// TODO:
-func subjectTogNMIPath(s string) string {
-	return ""
 }

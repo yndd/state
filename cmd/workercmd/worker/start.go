@@ -67,6 +67,7 @@ var (
 	serviceDiscoveryDcName    string
 	serviceDiscovery          string
 	serviceDiscoveryNamespace string // todo initialization
+	mqAddress                 string
 )
 
 // startCmd represents the start command for the network device driver
@@ -119,6 +120,7 @@ var startCmd = &cobra.Command{
 		col := collector.New(cmd.Context(),
 			collector.WithLogger(logger),
 			collector.WithCache(c),
+			collector.WithMQAddress(""),
 		)
 
 		// create a state target controller for creataing/deleting targets
@@ -250,4 +252,5 @@ func init() {
 	startCmd.Flags().StringVarP(&serviceDiscovery, "service-discovery", "", os.Getenv("SERVICE_DISCOVERY"), "the service discovery kind used in this deployment")
 	startCmd.Flags().StringVarP(&serviceDiscoveryNamespace, "service-discovery-namespace", "", os.Getenv("SERVICE_DISCOVERY_NAMESPACE"), "the namespace used for service discovery")
 	startCmd.Flags().StringVarP(&serviceDiscoveryDcName, "service-discovery-dc-name", "", os.Getenv("SERVICE_DISCOVERY_DCNAME"), "The dc name used in service discovery")
+	startCmd.Flags().StringVarP(&mqAddress, "mq-address", "", "nats.ndd-system.svc.cluster.local", "comma separated message queue server addresses")
 }
