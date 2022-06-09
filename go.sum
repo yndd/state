@@ -1541,6 +1541,8 @@ github.com/nats-io/nats.go v1.13.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/
 github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nats.go v1.14.0 h1:/QLCss4vQ6wvDpbqXucsVRDi13tFIR6kTdau+nXzKJw=
 github.com/nats-io/nats.go v1.14.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
+github.com/nats-io/nats.go v1.16.0 h1:zvLE7fGBQYW6MWaFaRdsgm9qT39PJDQoju+DS8KsO1g=
+github.com/nats-io/nats.go v1.16.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nkeys v0.1.0/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
 github.com/nats-io/nkeys v0.1.3/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
 github.com/nats-io/nkeys v0.1.4/go.mod h1:XdZpAbhgyyODYqjTawOnIOI7VlbKSarI9Gfy1tqEu/s=
@@ -2013,6 +2015,7 @@ github.com/yndd/cache v0.0.8/go.mod h1:hG94StQNZxE5HPXgsQbj1K78HCgoWfCHx7o8z9Z3J
 github.com/yndd/grpchandlers v0.0.1/go.mod h1:ZR/jz4S8xdU1B538xvlPPy+F03NyKmhxVZt/Rv9cM0c=
 github.com/yndd/grpchandlers v0.0.4 h1:TZot86wXE2+NJtC+COlAOCD4x7Jx/cMRHO9tN43qKiA=
 github.com/yndd/grpchandlers v0.0.4/go.mod h1:VJZztLIyt41BJhNclhez98bLBEoDW6dBJ4GZv4P2Xcc=
+github.com/yndd/grpcserver v0.0.1/go.mod h1:72LjUJQoX10WJFBmpILFoS+t8H7N7aCA+wMxFeZNTOk=
 github.com/yndd/grpcserver v0.0.7/go.mod h1:72LjUJQoX10WJFBmpILFoS+t8H7N7aCA+wMxFeZNTOk=
 github.com/yndd/grpcserver v0.0.10 h1:GJSfGmkN3vNLubrgBAySxs3T+oIE1PREYOngcHVicZc=
 github.com/yndd/grpcserver v0.0.10/go.mod h1:72LjUJQoX10WJFBmpILFoS+t8H7N7aCA+wMxFeZNTOk=
@@ -2020,8 +2023,9 @@ github.com/yndd/ndd-core v0.1.6/go.mod h1:zlQTBILqiJlYj3WYy0yHGBBIMZemhVXoNnXE4v
 github.com/yndd/ndd-core v0.1.7/go.mod h1:zlQTBILqiJlYj3WYy0yHGBBIMZemhVXoNnXE4vhF+pI=
 github.com/yndd/ndd-core v0.2.19/go.mod h1:vL11h7D7PDf629XFxhLMa4OROZrq4GbsM6tmk+T93xQ=
 github.com/yndd/ndd-core v0.2.21-0.20220522110645-f0267f153e7e/go.mod h1:TMO4dbHkof24JUs5OrZ9dRv7nXgJmNWpbJOxlCnLvHY=
-github.com/yndd/ndd-core v0.2.21 h1:TkDk1sGCVXOrHrGQBH5jVHrBDJ0CllJ9Y3dXU/uQ5QY=
 github.com/yndd/ndd-core v0.2.21/go.mod h1:5HHOnsIevWFpxQq6TD7Gw5FrrAUen86687ymZpBfzZA=
+github.com/yndd/ndd-core v0.2.23 h1:8mhQjhtNSh8PNNuuvi2swXUyfR9KS61pSR50mblMrlA=
+github.com/yndd/ndd-core v0.2.23/go.mod h1:VHvt/zcQP8Xgr5BXQ4ULegdNIMXfQeiyMglbPhyxa+Y=
 github.com/yndd/ndd-runtime v0.1.1/go.mod h1:H9878DK7V5xxs4bi1pMrWPZJ6/+X3MqpKaErDPkcLs4=
 github.com/yndd/ndd-runtime v0.1.2/go.mod h1:Y07uIZQgSqz5h3UeAYp24JyDjugH0T/zeACjNFVnBes=
 github.com/yndd/ndd-runtime v0.1.6/go.mod h1:Y07uIZQgSqz5h3UeAYp24JyDjugH0T/zeACjNFVnBes=
@@ -2073,6 +2077,8 @@ github.com/yndd/nddr-org-registry v0.0.11/go.mod h1:5cVl1Cv1UczM72EXKJmjIzrJAQH7
 github.com/yndd/nddr-topo-registry v0.0.4/go.mod h1:f5/qMkWQa7namvEgYrNZisgvhcee4bgnFCt30NWOcf8=
 github.com/yndd/observability-runtime v0.0.1 h1:9qObmBY9XJlRMSv6TxM1PUjTkJhEhAWLbUnbCleuCr0=
 github.com/yndd/observability-runtime v0.0.1/go.mod h1:D7USBEQ4F43kKhcjSH/3GbSpQN+TsJb+SW8Gzks0mSw=
+github.com/yndd/observability-runtime v0.0.2 h1:OTCqA5V6djynuwduz5McVxKCmglZiis+xOpEI2TCKCI=
+github.com/yndd/observability-runtime v0.0.2/go.mod h1:D7USBEQ4F43kKhcjSH/3GbSpQN+TsJb+SW8Gzks0mSw=
 github.com/yndd/reconciler-controller v0.0.20 h1:kc7wuPFG3TVVmZI2mH1nA4WW4YvE82tBaYfNFO5H6Fw=
 github.com/yndd/reconciler-controller v0.0.20/go.mod h1:GO582ZIjVORELBVDXjpPJC6ggfmmQ7P2ittuSjjqPVM=
 github.com/yndd/registrator v0.0.19/go.mod h1:6y85l1HVkcwJNSknGFyx8jBmw4VDgRUaF0Spku6sHiw=
