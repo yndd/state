@@ -21,7 +21,7 @@ require (
 	github.com/yndd/observability-runtime v0.0.2
 	github.com/yndd/reconciler-controller v0.0.20
 	github.com/yndd/registrator v0.0.20
-	github.com/yndd/target v0.0.99
+	github.com/yndd/target v0.0.100
 	google.golang.org/grpc v1.47.0
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.24.1
