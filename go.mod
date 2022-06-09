@@ -11,7 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.6.0
 	github.com/spf13/cobra v1.4.0
-	github.com/yndd/cache v0.0.6
+	github.com/yndd/cache v0.0.8
 	github.com/yndd/grpchandlers v0.0.4
 	github.com/yndd/grpcserver v0.0.10
 	github.com/yndd/ndd-core v0.2.23
@@ -21,7 +21,7 @@ require (
 	github.com/yndd/observability-runtime v0.0.2
 	github.com/yndd/reconciler-controller v0.0.20
 	github.com/yndd/registrator v0.0.20
-	github.com/yndd/target v0.0.81
+	github.com/yndd/target v0.0.99
 	google.golang.org/grpc v1.47.0
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.24.1
