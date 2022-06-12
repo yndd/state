@@ -1,4 +1,4 @@
-package collector
+package subject
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 )
 
-func Test_gNMIPathToSubject(t *testing.T) {
+func Test_GNMIPathToSubject(t *testing.T) {
 	type args struct {
 		p *gnmi.Path
 	}
@@ -237,8 +237,8 @@ func Test_gNMIPathToSubject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := gNMIPathToSubject(tt.args.p); got != tt.want {
-				t.Errorf("gNMIPathToSubject() = %v, want %v", got, tt.want)
+			if got := GNMIPathToSubject(tt.args.p); got != tt.want {
+				t.Errorf("GNMIPathToSubject() = %v, want %v", got, tt.want)
 			}
 		})
 	}
