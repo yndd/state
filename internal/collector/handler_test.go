@@ -243,3 +243,124 @@ func Test_gNMIPathToSubject(t *testing.T) {
 		})
 	}
 }
+
+func TestXPathToSubject(t *testing.T) {
+	type args struct {
+		p string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "empty",
+			args:    args{p: ""},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "single_elem",
+			args:    args{p: "foo"},
+			want:    "foo.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems",
+			args:    args{p: "/foo/bar"},
+			want:    "foo.bar.>",
+			wantErr: false,
+		},
+		{
+			name:    "elem_with_key",
+			args:    args{p: "foo[k=v]"},
+			want:    "foo.{k=v}.>",
+			wantErr: false,
+		},
+		{
+			name:    "elem_with_wildcard_key_at_the_end",
+			args:    args{p: "foo[k=*]"},
+			want:    "foo.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_wildcard_key",
+			args:    args{p: "/foo[k=*]/bar"},
+			want:    "foo.*.bar.>",
+			wantErr: false,
+		},
+		{
+			name:    "elem_with_two_keys",
+			args:    args{p: "foo[k2=v2][k1=v1]"},
+			want:    "foo.{k1=v1}.{k2=v2}.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_two_keys",
+			args:    args{p: "foo[k2=v2][k1=v1]/bar"},
+			want:    "foo.{k1=v1}.{k2=v2}.bar.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_two_keys_each",
+			args:    args{p: "foo[k2=v2][k1=v1]/bar[a=1][b=2]"},
+			want:    "foo.{k1=v1}.{k2=v2}.bar.{a=1}.{b=2}.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_two_keys_one_wildcard",
+			args:    args{p: "foo[k1=*][k2=v2]/bar"},
+			want:    "foo.*.{k2=v2}.bar.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_two_keys_both_wildcards",
+			args:    args{p: "foo[a=*][b=*]/bar"},
+			want:    "foo.*.*.bar.>",
+			wantErr: false,
+		},
+		{
+			name:    "two_elems_with_two_keys_each_one_wildcard",
+			args:    args{p: "foo[k2=v2][k1=*]/bar[a=1][b=*]"},
+			want:    "foo.*.{k2=v2}.bar.{a=1}.>",
+			wantErr: false,
+		},
+		{
+			name:    "path_with_origin",
+			args:    args{p: "origin:/foo"},
+			want:    "origin.foo.>",
+			wantErr: false,
+		},
+		{
+			name:    "only_origin",
+			args:    args{p: "origin:/"},
+			want:    "origin.>",
+			wantErr: false,
+		},
+		{
+			name:    "only_origin_no_slash",
+			args:    args{p: "origin:"},
+			want:    "origin.>",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := XPathToSubject(tt.args.p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("XPathToSubject() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("XPathToSubject() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkXPathToSubject(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		XPathToSubject("origin:/foo[k2=v2][k1=*]/bar[a=1][b=*]")
+	}
+}
