@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	nddov1 "github.com/yndd/nddo-runtime/apis/common/v1"
+	"github.com/yndd/state/pkg/ygotnddpstate"
 )
 
 /*
@@ -118,6 +119,15 @@ func (x *State) GetAvailabilityZone() string {
 	} else {
 		return s
 	}
+}
+
+func (x *State) GetPaths() []string {
+	se := new(ygotnddpstate.YnddState_StateEntry)
+	err := ygotnddpstate.Unmarshal(x.Spec.Properties.Raw, se)
+	if err != nil {
+		return nil
+	}
+	return se.Path
 }
 
 func (x *State) GetSpec() *StateSpec {
